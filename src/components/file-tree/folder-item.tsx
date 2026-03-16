@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useAppStore } from "@/stores/app-store";
+import { useEditorStore } from "@/stores/editor-store";
 import { NoteItem } from "./note-item";
 import { ChevronRight, ChevronDown, Folder, FolderPlus, FilePlus } from "lucide-react";
 import type { Folder as FolderType, NoteMeta } from "@/types";
@@ -24,6 +25,10 @@ export function FolderItem({ folder, notes, childFolders, allNotes, allFolders, 
   const createNote = useAppStore((s) => s.createNote);
   const createFolder = useAppStore((s) => s.createFolder);
   const setSelectedNoteId = useAppStore((s) => s.setSelectedNoteId);
+  const loadNote = useEditorStore((s) => s.loadNote);
+  const switchToNote = useEditorStore((s) => s.switchToNote);
+  const saveStatus = useEditorStore((s) => s.saveStatus);
+  const saveCurrentNote = useEditorStore((s) => s.saveCurrentNote);
 
   const [renaming, setRenaming] = useState(false);
   const [renameName, setRenameName] = useState(folder.name);
@@ -56,8 +61,16 @@ export function FolderItem({ folder, notes, childFolders, allNotes, allFolders, 
       setNewNoteName("");
       return;
     }
+
+    // 如果当前有未保存的内容，先自动保存
+    if (saveStatus === "unsaved") {
+      await saveCurrentNote();
+    }
+
     const note = await createNote(folder.id, newNoteName.trim());
     if (note) {
+      await loadNote(note.id);
+      switchToNote(note.id);
       setSelectedNoteId(note.id);
     }
     setNewNoteName("");

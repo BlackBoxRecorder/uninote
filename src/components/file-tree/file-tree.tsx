@@ -22,6 +22,9 @@ export function FileTree() {
   const createNote = useAppStore((s) => s.createNote);
   const setSelectedNoteId = useAppStore((s) => s.setSelectedNoteId);
   const loadNote = useEditorStore((s) => s.loadNote);
+  const switchToNote = useEditorStore((s) => s.switchToNote);
+  const saveStatus = useEditorStore((s) => s.saveStatus);
+  const saveCurrentNote = useEditorStore((s) => s.saveCurrentNote);
 
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -46,10 +49,16 @@ export function FileTree() {
   };
 
   const handleCreateRootNote = async () => {
+    // 如果当前有未保存的内容，先自动保存
+    if (saveStatus === "unsaved") {
+      await saveCurrentNote();
+    }
+
     const note = await createNote(null, "未命名笔记");
     if (note) {
+      await loadNote(note.id);
+      switchToNote(note.id);
       setSelectedNoteId(note.id);
-      loadNote(note.id);
     }
   };
 
