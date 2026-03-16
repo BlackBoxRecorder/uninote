@@ -1,7 +1,7 @@
 'use client';
 
 import { formatCodeBlock, isLangSupported } from '@platejs/code-block';
-import { BracesIcon, Check, CheckIcon, ChevronDown, ChevronRight, CopyIcon } from 'lucide-react';
+import { BracesIcon, Check, CheckIcon, ChevronDown, ChevronRight, CopyIcon, Maximize2, X } from 'lucide-react';
 import { NodeApi, type TCodeBlockElement, type TCodeSyntaxLeaf } from 'platejs';
 import {
   PlateElement,
@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils';
 export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
   const { editor, element } = props;
   const [collapsed, setCollapsed] = React.useState(element.collapsed ?? false);
+  const [isFullscreen, setIsFullscreen] = React.useState(false);
 
   const toggleCollapse = () => {
     const newCollapsed = !collapsed;
@@ -43,73 +44,146 @@ export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
     );
   };
 
+  const openFullscreen = () => {
+    setIsFullscreen(true);
+  };
+
+  const closeFullscreen = () => {
+    setIsFullscreen(false);
+  };
+
+  const codeContent = React.useMemo(() => NodeApi.string(element), [element]);
+
   return (
-    <PlateElement
-      className="py-1"
-      {...props}
-    >
-      <div className="relative rounded-md bg-muted/50">
-        <div 
-          className={cn(
-            "flex items-center justify-between px-3 py-2 border-b border-border/50 bg-muted/80 rounded-t-md",
-            !collapsed && "rounded-b-none"
-          )}
-          contentEditable={false}
-        >
-          <Button
-            className="h-6 px-1 text-xs gap-1 text-muted-foreground hover:text-foreground"
-            onClick={toggleCollapse}
-            size="sm"
-            variant="ghost"
-          >
-            {collapsed ? (
-              <ChevronRight className="!size-3.5" />
-            ) : (
-              <ChevronDown className="!size-3.5" />
+    <>
+      <PlateElement
+        className="py-1"
+        {...props}
+      >
+        <div className="relative rounded-md bg-muted/50">
+          <div 
+            className={cn(
+              "flex items-center justify-between px-3 py-2 border-b border-border/50 bg-muted/80 rounded-t-md",
+              !collapsed && "rounded-b-none"
             )}
-            <span className="text-xs">代码块</span>
-          </Button>
-          
-          {!collapsed && (
-            <div className="flex items-center gap-0.5">
-              {isLangSupported(element.lang) && (
+            contentEditable={false}
+          >
+            <Button
+              className="h-6 px-1 text-xs gap-1 text-muted-foreground hover:text-foreground"
+              onClick={toggleCollapse}
+              size="sm"
+              variant="ghost"
+            >
+              {collapsed ? (
+                <ChevronRight className="!size-3.5" />
+              ) : (
+                <ChevronDown className="!size-3.5" />
+              )}
+              <span className="text-xs">代码块</span>
+            </Button>
+            
+            {!collapsed && (
+              <div className="flex items-center gap-0.5">
                 <Button
                   className="size-6 text-xs"
-                  onClick={() => formatCodeBlock(editor, { element })}
+                  onClick={openFullscreen}
                   size="icon"
-                  title="Format code"
+                  title="全屏查看"
                   variant="ghost"
                 >
-                  <BracesIcon className="!size-3.5 text-muted-foreground" />
+                  <Maximize2 className="!size-3.5 text-muted-foreground" />
                 </Button>
-              )}
 
-              <CodeBlockCombobox />
+                {isLangSupported(element.lang) && (
+                  <Button
+                    className="size-6 text-xs"
+                    onClick={() => formatCodeBlock(editor, { element })}
+                    size="icon"
+                    title="Format code"
+                    variant="ghost"
+                  >
+                    <BracesIcon className="!size-3.5 text-muted-foreground" />
+                  </Button>
+                )}
 
-              <CopyButton
-                className="size-6 gap-1 text-muted-foreground text-xs"
-                size="icon"
-                value={() => NodeApi.string(element)}
-                variant="ghost"
-              />
+                <CodeBlockCombobox />
+
+                <CopyButton
+                  className="size-6 gap-1 text-muted-foreground text-xs"
+                  size="icon"
+                  value={() => NodeApi.string(element)}
+                  variant="ghost"
+                />
+              </div>
+            )}
+          </div>
+
+          {!collapsed && (
+            <pre className="overflow-x-auto p-4 pr-4 font-mono text-sm leading-[normal] [tab-size:2] print:break-inside-avoid">
+              <code>{props.children}</code>
+            </pre>
+          )}
+          
+          {collapsed && (
+            <div className="px-3 py-2 text-xs text-muted-foreground italic">
+              {NodeApi.string(element).slice(0, 50)}
+              {NodeApi.string(element).length > 50 ? '...' : ''}
             </div>
           )}
         </div>
+      </PlateElement>
 
-        {!collapsed && (
-          <pre className="overflow-x-auto p-4 pr-4 font-mono text-sm leading-[normal] [tab-size:2] print:break-inside-avoid">
-            <code>{props.children}</code>
-          </pre>
-        )}
-        
-        {collapsed && (
-          <div className="px-3 py-2 text-xs text-muted-foreground italic">
-            {NodeApi.string(element).slice(0, 50)}
-            {NodeApi.string(element).length > 50 ? '...' : ''}
+      {/* 全屏遮罩 */}
+      {isFullscreen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/90 flex flex-col"
+          onDoubleClick={closeFullscreen}
+        >
+          {/* 遮罩头部工具栏 */}
+          <div 
+            className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/50"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 text-white/80">
+              <span className="text-sm font-medium">代码预览</span>
+              <span className="text-xs text-white/50">
+                {element.lang || 'plaintext'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CopyButton
+                className="size-8 text-white/70 hover:text-white hover:bg-white/10"
+                size="icon"
+                value={codeContent}
+                variant="ghost"
+              />
+              <Button
+                className="size-8 text-white/70 hover:text-white hover:bg-white/10"
+                onClick={closeFullscreen}
+                size="icon"
+                variant="ghost"
+              >
+                <X className="!size-4" />
+              </Button>
+            </div>
           </div>
-        )}
-      </div>
-    </PlateElement>
+
+          {/* 代码内容区域 */}
+          <div className="flex-1 overflow-auto p-8">
+            <pre className="min-h-full font-mono text-sm leading-relaxed [tab-size:2]">
+              <code className="text-white/90">
+                {props.children}
+              </code>
+            </pre>
+          </div>
+
+          {/* 底部提示 */}
+          <div className="px-4 py-2 text-center text-xs text-white/40 border-t border-white/10">
+            双击任意位置退出全屏
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
