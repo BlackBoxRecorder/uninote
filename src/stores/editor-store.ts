@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Value } from 'platejs';
-import type { SaveStatus, Heading } from '@/types';
+import type { SaveStatus } from '@/types';
 
 interface EditorState {
   // Current note
@@ -22,10 +22,6 @@ interface EditorState {
   // Word count
   wordCount: number;
   setWordCount: (count: number) => void;
-
-  // Headings for outline
-  headings: Heading[];
-  setHeadings: (headings: Heading[]) => void;
 
   // Load note content (does NOT change currentNoteId)
   loadNote: (noteId: string) => Promise<void>;
@@ -52,9 +48,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   wordCount: 0,
   setWordCount: (count) => set({ wordCount: count }),
-
-  headings: [],
-  setHeadings: (headings) => set({ headings }),
 
   loadNote: async (noteId: string) => {
     try {

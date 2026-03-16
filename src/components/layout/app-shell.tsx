@@ -1,7 +1,6 @@
 "use client";
 
 import { FileTree } from "@/components/file-tree/file-tree";
-import { DocumentOutline } from "@/components/outline/document-outline";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { Header } from "@/components/layout/header";
 import { IdeasPage } from "@/components/ideas/ideas-page";
@@ -29,10 +28,6 @@ export function AppShell() {
           <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background">
             <PlateEditor key={selectedNoteId || "empty"} />
           </main>
-
-          <aside className="flex h-full w-56 flex-shrink-0 flex-col overflow-hidden border-l border-border bg-card">
-            <DocumentOutline />
-          </aside>
         </div>
       ) : (
         <IdeasPage />
