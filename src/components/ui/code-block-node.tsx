@@ -52,7 +52,29 @@ export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
     setIsFullscreen(false);
   };
 
-  const codeContent = React.useMemo(() => NodeApi.string(element), [element]);
+  const codeContent = React.useMemo(() => {
+    // 代码块结构: codeBlock -> codeLine[] -> text[]
+    // 每行之间需要用换行符分隔
+    interface CodeNode {
+      text?: string;
+      children?: CodeNode[];
+      type?: string;
+    }
+    const extractText = (node: CodeNode): string => {
+      if (typeof node.text === 'string') {
+        return node.text;
+      }
+      if (Array.isArray(node.children)) {
+        // 如果是代码块，子元素是代码行，行之间加换行符
+        if (node.type === 'code_block') {
+          return node.children.map(extractText).join('\n');
+        }
+        return node.children.map(extractText).join('');
+      }
+      return '';
+    };
+    return extractText(element as CodeNode);
+  }, [element]);
 
   return (
     <>
@@ -135,51 +157,63 @@ export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
 
       {/* 全屏遮罩 */}
       {isFullscreen && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/90 flex flex-col"
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-auto py-12 px-4"
+          style={{ backgroundColor: 'rgba(250, 250, 250, 0.98)' }}
           onDoubleClick={closeFullscreen}
         >
-          {/* 遮罩头部工具栏 */}
-          <div 
-            className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/50"
+          {/* 代码内容容器 - 根据内容自适应宽度 */}
+          <div
+            className="relative rounded-lg border border-border/50 bg-white shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-2 text-white/80">
-              <span className="text-sm font-medium">代码预览</span>
-              <span className="text-xs text-white/50">
-                {element.lang || 'plaintext'}
-              </span>
+            {/* 遮罩头部工具栏 */}
+            <div
+              className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-muted/30 rounded-t-lg"
+            >
+              <div className="flex items-center gap-2 text-foreground/80">
+                <span className="text-sm font-medium">代码预览</span>
+                <span className="text-xs text-muted-foreground px-2 py-0.5 bg-muted rounded">
+                  {element.lang || 'plaintext'}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <CopyButton
+                  className="size-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+                  size="icon"
+                  value={codeContent}
+                  variant="ghost"
+                />
+                <Button
+                  className="size-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+                  onClick={closeFullscreen}
+                  size="icon"
+                  variant="ghost"
+                >
+                  <X className="!size-4" />
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <CopyButton
-                className="size-8 text-white/70 hover:text-white hover:bg-white/10"
-                size="icon"
-                value={codeContent}
-                variant="ghost"
-              />
-              <Button
-                className="size-8 text-white/70 hover:text-white hover:bg-white/10"
-                onClick={closeFullscreen}
-                size="icon"
-                variant="ghost"
+
+            {/* 代码内容区域 - 自动换行，根据内容自适应宽度 */}
+            <div className="p-6">
+              <pre
+                className="font-mono text-sm leading-relaxed [tab-size:2] whitespace-pre-wrap break-all"
+                style={{
+                  minWidth: 'min(80vw, 800px)',
+                  maxWidth: '90vw'
+                }}
               >
-                <X className="!size-4" />
-              </Button>
+                <code className="text-foreground/90">
+                  {props.children}
+                </code>
+              </pre>
             </div>
-          </div>
 
-          {/* 代码内容区域 */}
-          <div className="flex-1 overflow-auto p-8">
-            <pre className="min-h-full font-mono text-sm leading-relaxed [tab-size:2]">
-              <code className="text-white/90">
-                {props.children}
-              </code>
-            </pre>
-          </div>
-
-          {/* 底部提示 */}
-          <div className="px-4 py-2 text-center text-xs text-white/40 border-t border-white/10">
-            双击任意位置退出全屏
+            {/* 底部提示 */}
+            <div className="px-4 py-2 text-center text-xs text-muted-foreground border-t border-border/50 bg-muted/20 rounded-b-lg">
+              双击任意位置退出全屏
+            </div>
           </div>
         </div>
       )}
