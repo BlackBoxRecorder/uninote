@@ -15,7 +15,11 @@ import {
 } from '@/components/ui/table-node';
 
 export const TableKit = [
-  TablePlugin.withComponent(TableElement),
+  TablePlugin.configure({
+    options: {
+      initialTableWidth: 600,
+    },
+  }).withComponent(TableElement),
   TableRowPlugin.withComponent(TableRowElement),
   TableCellPlugin.withComponent(TableCellElement),
   TableCellHeaderPlugin.withComponent(TableCellHeaderElement),

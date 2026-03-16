@@ -10,6 +10,7 @@ import { PlateElement, useEditorMounted, withHOC } from 'platejs/react';
 import LiteYouTubeEmbed from 'react-lite-youtube-embed';
 import ReactPlayer from 'react-player';
 
+import { parseBilibiliUrl } from '@/lib/url-parsers';
 import { cn } from '@/lib/utils';
 
 import { Caption, CaptionTextarea } from './caption';
@@ -32,11 +33,13 @@ export const VideoElement = withHOC(
       readOnly,
       unsafeUrl,
     } = useMediaState({
-      urlParsers: [parseTwitterUrl, parseVideoUrl],
+      urlParsers: [parseTwitterUrl, parseVideoUrl, parseBilibiliUrl],
     });
     const width = useResizableValue('width');
 
     const isEditorMounted = useEditorMounted();
+
+    const isBilibili = embed?.provider === 'bilibili';
 
     const isTweet = true;
 
@@ -89,6 +92,17 @@ export const VideoElement = withHOC(
                       '[&.lyt-activated]:before:pointer-events-none [&.lyt-activated]:before:opacity-0',
                       '[&.lyt-activated_>_.lty-playbtn]:pointer-events-none [&.lyt-activated_>_.lty-playbtn]:opacity-0!'
                     )}
+                  />
+                </div>
+              )}
+
+              {!isUpload && isBilibili && (
+                <div ref={handleRef} className="aspect-video w-full rounded-sm overflow-hidden">
+                  <iframe
+                    allowFullScreen
+                    className="size-full border-0"
+                    src={embed!.url}
+                    title="bilibili"
                   />
                 </div>
               )}

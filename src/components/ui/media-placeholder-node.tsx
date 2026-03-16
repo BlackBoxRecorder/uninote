@@ -29,7 +29,30 @@ const CONTENT: Record<
     icon: <AudioLines />,
   },
   [KEYS.file]: {
-    accept: ['*'],
+    accept: [
+      // PDF
+      'application/pdf',
+      // Markdown
+      'text/markdown',
+      'text/x-markdown',
+      'text/plain',
+      // 压缩包
+      'application/zip',
+      'application/x-zip-compressed',
+      'application/x-rar-compressed',
+      'application/x-7z-compressed',
+      'application/gzip',
+      'application/x-gzip',
+      'application/x-tar',
+      'application/x-bzip2',
+      // Office 文档
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    ],
     content: 'Add a file',
     icon: <FileUp />,
   },

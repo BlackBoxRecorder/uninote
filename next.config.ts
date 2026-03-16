@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
     "cos-nodejs-sdk-v5",
     "bcryptjs",
   ],
+  experimental: {
+    proxyClientMaxBodySize: "100mb",
+  },
 };
 
 export default nextConfig;

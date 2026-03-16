@@ -10,6 +10,7 @@ import { PlateElement, withHOC } from 'platejs/react';
 import LiteYouTubeEmbed from 'react-lite-youtube-embed';
 import { Tweet } from 'react-tweet';
 
+import { parseBilibiliUrl } from '@/lib/url-parsers';
 import { cn } from '@/lib/utils';
 
 import { Caption, CaptionTextarea } from './caption';
@@ -33,10 +34,12 @@ export const MediaEmbedElement = withHOC(
       readOnly,
       selected,
     } = useMediaState({
-      urlParsers: [parseTwitterUrl, parseVideoUrl],
+      urlParsers: [parseTwitterUrl, parseVideoUrl, parseBilibiliUrl],
     });
     const width = useResizableValue('width');
     const provider = embed?.provider;
+
+    const isBilibili = provider === 'bilibili';
 
     return (
       <MediaToolbar plugin={MediaEmbedPlugin}>
@@ -84,10 +87,12 @@ export const MediaEmbedElement = withHOC(
                 ) : (
                   <div
                     className={cn(
+                      'aspect-video',
                       provider === 'vimeo' && 'pb-[75%]',
                       provider === 'youku' && 'pb-[56.25%]',
                       provider === 'dailymotion' && 'pb-[56.0417%]',
-                      provider === 'coub' && 'pb-[51.25%]'
+                      provider === 'coub' && 'pb-[51.25%]',
+                      isBilibili && 'w-full rounded-sm overflow-hidden'
                     )}
                   >
                     <iframe
