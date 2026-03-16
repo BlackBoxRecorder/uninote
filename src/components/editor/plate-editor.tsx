@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { type Value } from 'platejs';
-import { serializeMd } from '@platejs/markdown';
 import { Plate, usePlateEditor } from 'platejs/react';
 
 import { EditorKit } from '@/components/editor/editor-kit';
@@ -13,85 +12,56 @@ export function PlateEditor() {
   const {
     currentNoteId,
     initialContent,
+    saveStatus,
     setSaveStatus,
-    setWordCount,
+    setCurrentContent,
   } = useEditorStore();
 
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const isSavingRef = useRef(false);
+  // 用于跟踪基准内容（初始内容或保存后的内容），比较是否真的有修改
+  const baselineContentRef = useRef<Value | null>(null);
 
   const editor = usePlateEditor({
     plugins: EditorKit,
     value: initialContent ?? undefined,
   });
 
-  const saveContent = useCallback(
-    async (value: Value) => {
-      if (!currentNoteId || isSavingRef.current) return;
-
-      isSavingRef.current = true;
-      setSaveStatus('saving');
-
-      try {
-        const content = JSON.stringify(value);
-        const markdown = serializeMd(editor);
-        const text = editor.api.string([]);
-        const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
-
-        const res = await fetch(`/api/notes/${currentNoteId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content, markdown, wordCount }),
-        });
-
-        if (res.ok) {
-          setSaveStatus('saved');
-          setWordCount(wordCount);
-        } else {
-          setSaveStatus('error');
-        }
-      } catch {
-        setSaveStatus('error');
-      } finally {
-        isSavingRef.current = false;
-      }
-    },
-    [currentNoteId, editor, setSaveStatus, setWordCount]
-  );
-
   const handleChange = useCallback(
     ({ value }: { value: Value }) => {
       if (!currentNoteId) return;
 
-      setSaveStatus('unsaved');
+      // 比较内容是否真的改变了（与基准内容比较）
+      const baselineStr = JSON.stringify(baselineContentRef.current);
+      const currentStr = JSON.stringify(value);
 
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current);
+      if (baselineStr !== currentStr) {
+        setSaveStatus('unsaved');
+        setCurrentContent(value);
+      } else {
+        // 内容与基准内容相同，确保状态是 saved
+        setSaveStatus('saved');
+        setCurrentContent(null);
       }
-
-      saveTimerRef.current = setTimeout(() => {
-        saveContent(value);
-      }, 1000);
     },
-    [currentNoteId, saveContent, setSaveStatus]
+    [currentNoteId, setSaveStatus, setCurrentContent]
   );
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current);
-      }
-    };
-  }, []);
 
   // Reset editor when note changes
   useEffect(() => {
     if (initialContent) {
       editor.tf.setValue(initialContent);
+      baselineContentRef.current = initialContent;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentNoteId]);
+
+  // 保存成功后更新基准内容
+  useEffect(() => {
+    if (saveStatus === 'saved' && currentNoteId) {
+      // 获取当前编辑器内容作为新的基准
+      baselineContentRef.current = editor.children as Value;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saveStatus]);
 
   if (!currentNoteId) {
     return (

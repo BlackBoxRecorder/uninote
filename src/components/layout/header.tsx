@@ -3,13 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useEditorStore } from "@/stores/editor-store";
 import { useAppStore } from "@/stores/app-store";
-import { FileText, LogOut, Lightbulb } from "lucide-react";
+import { FileText, LogOut, Lightbulb, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Header() {
   const router = useRouter();
   const saveStatus = useEditorStore((s) => s.saveStatus);
   const wordCount = useEditorStore((s) => s.wordCount);
+  const saveCurrentNote = useEditorStore((s) => s.saveCurrentNote);
   const activeTab = useAppStore((s) => s.activeTab);
   const setActiveTab = useAppStore((s) => s.setActiveTab);
   const selectedNoteId = useAppStore((s) => s.selectedNoteId);
@@ -17,6 +18,10 @@ export function Header() {
   const handleLogout = () => {
     document.cookie = "token=; path=/; max-age=0";
     router.push("/login");
+  };
+
+  const handleSave = async () => {
+    await saveCurrentNote();
   };
 
   const statusMap = {
@@ -64,11 +69,20 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-3">
-        {/* Save status + word count */}
+        {/* Save status + word count + save button */}
         {activeTab === "notes" && selectedNoteId && (
           <div className="flex items-center gap-3 text-xs">
             <span className="text-muted-foreground">{wordCount} 字</span>
             <span className={status.color}>{status.text}</span>
+            {saveStatus === "unsaved" && (
+              <button
+                onClick={handleSave}
+                className="flex items-center gap-1 rounded-md bg-brand px-2 py-1 text-xs text-white hover:bg-brand/90 transition-colors"
+              >
+                <Save className="h-3 w-3" />
+                保存
+              </button>
+            )}
           </div>
         )}
 

@@ -19,6 +19,9 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
   const renameNote = useAppStore((s) => s.renameNote);
   const deleteNote = useAppStore((s) => s.deleteNote);
   const loadNote = useEditorStore((s) => s.loadNote);
+  const switchToNote = useEditorStore((s) => s.switchToNote);
+  const saveStatus = useEditorStore((s) => s.saveStatus);
+  const saveCurrentNote = useEditorStore((s) => s.saveCurrentNote);
 
   const [renaming, setRenaming] = useState(false);
   const [renameName, setRenameName] = useState(note.title);
@@ -33,10 +36,32 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
     }
   }, [renaming]);
 
-  const handleClick = () => {
+  const handleClick = async () => {
     if (renaming) return;
+
+    // 如果当前有未保存的内容，提示用户
+    if (saveStatus === "unsaved") {
+      const confirmed = window.confirm("当前笔记有未保存的内容，是否保存后再切换？");
+      if (confirmed) {
+        // 保存后再切换
+        const saved = await saveCurrentNote();
+        if (!saved) {
+          // 保存失败，不切换
+          return;
+        }
+      } else {
+        // 用户选择不保存，直接切换（放弃更改）
+      }
+    }
+
+    // 流程：
+    // 1. 先加载笔记内容（loadNote 不改变 currentNoteId）
+    // 2. 再切换到新笔记（switchToNote 更新 currentNoteId）
+    // 这样可以确保：
+    // - PlateEditor 重新挂载时，initialContent 已经是新笔记的内容
+    await loadNote(note.id);
+    switchToNote(note.id);
     setSelectedNoteId(note.id);
-    loadNote(note.id);
   };
 
   const handleRename = async () => {

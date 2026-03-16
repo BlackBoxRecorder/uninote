@@ -10,7 +10,7 @@ export function DocumentOutline() {
   const selectedNoteId = useAppStore((s) => s.selectedNoteId);
 
   const handleClick = (id: string) => {
-    const el = document.querySelector(`[data-block-id="${id}"]`);
+    const el = document.querySelector(`[data-block-id="${CSS.escape(id)}"]`);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
     }

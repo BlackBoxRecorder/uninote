@@ -116,12 +116,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       const res = await fetch(`/api/folders/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        set((s) => ({
-          folders: s.folders.filter((f) => f.id !== id && f.parentId !== id),
-          notes: s.notes.map((n) =>
-            n.folderId === id ? { ...n, folderId: null } : n
-          ),
-        }));
+        // Refresh tree from server to correctly handle cascade deletion
+        // of nested subfolders and note reassignment
+        await get().fetchTree();
       }
     } catch (e) {
       console.error('Failed to delete folder:', e);
