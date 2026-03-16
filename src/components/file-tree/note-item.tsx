@@ -13,6 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ConfirmDialog, SaveConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface NoteItemProps {
   note: NoteMeta;
@@ -33,6 +34,9 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
   const [renameName, setRenameName] = useState(note.title);
   const renameRef = useRef<HTMLInputElement>(null);
 
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
   const isActive = selectedNoteId === note.id;
 
   useEffect(() => {
@@ -47,17 +51,8 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
 
     // 如果当前有未保存的内容，提示用户
     if (saveStatus === "unsaved") {
-      const confirmed = window.confirm("当前笔记有未保存的内容，是否保存后再切换？");
-      if (confirmed) {
-        // 保存后再切换
-        const saved = await saveCurrentNote();
-        if (!saved) {
-          // 保存失败，不切换
-          return;
-        }
-      } else {
-        // 用户选择不保存，直接切换（放弃更改）
-      }
+      setShowSaveDialog(true);
+      return;
     }
 
     // 流程：
@@ -65,6 +60,21 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
     // 2. 再切换到新笔记（switchToNote 更新 currentNoteId）
     // 这样可以确保：
     // - PlateEditor 重新挂载时，initialContent 已经是新笔记的内容
+    await loadNote(note.id);
+    switchToNote(note.id);
+    setSelectedNoteId(note.id);
+  };
+
+  const handleSaveAndSwitch = async () => {
+    const saved = await saveCurrentNote();
+    if (saved) {
+      await loadNote(note.id);
+      switchToNote(note.id);
+      setSelectedNoteId(note.id);
+    }
+  };
+
+  const handleDiscardAndSwitch = async () => {
     await loadNote(note.id);
     switchToNote(note.id);
     setSelectedNoteId(note.id);
@@ -83,11 +93,11 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm(`确定删除笔记 "${note.title}" 吗？`)) return;
     await deleteNote(note.id);
   };
 
   return (
+    <>
     <ContextMenu.Root>
       <ContextMenu.Trigger asChild>
         <button
@@ -154,12 +164,31 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
           <ContextMenu.Separator className="my-1 h-px bg-border" />
           <ContextMenu.Item
             className="flex cursor-pointer items-center rounded-md px-3 py-1.5 text-sm text-destructive outline-none hover:bg-accent transition-colors"
-            onSelect={handleDelete}
+            onSelect={() => setShowDeleteDialog(true)}
           >
             删除
           </ContextMenu.Item>
         </ContextMenu.Content>
       </ContextMenu.Portal>
     </ContextMenu.Root>
+
+    <SaveConfirmDialog
+      open={showSaveDialog}
+      onOpenChange={setShowSaveDialog}
+      onSave={handleSaveAndSwitch}
+      onDiscard={handleDiscardAndSwitch}
+    />
+
+    <ConfirmDialog
+      open={showDeleteDialog}
+      onOpenChange={setShowDeleteDialog}
+      title="删除笔记"
+      description={`确定删除笔记 "${note.title}" 吗？删除后无法恢复。`}
+      confirmText="删除"
+      cancelText="取消"
+      variant="destructive"
+      onConfirm={handleDelete}
+    />
+    </>
   );
 }

@@ -8,6 +8,7 @@ import { ChevronRight, ChevronDown, Folder, FolderPlus, FilePlus } from "lucide-
 import type { Folder as FolderType, NoteMeta } from "@/types";
 import * as ContextMenu from "@radix-ui/react-context-menu";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface FolderItemProps {
   folder: FolderType;
@@ -36,6 +37,7 @@ export function FolderItem({ folder, notes, childFolders, allNotes, allFolders, 
   const [newNoteName, setNewNoteName] = useState("");
   const [creatingSubfolder, setCreatingSubfolder] = useState(false);
   const [newSubfolderName, setNewSubfolderName] = useState("");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const renameRef = useRef<HTMLInputElement>(null);
 
   const isRootFolder = folder.parentId === null;
@@ -89,14 +91,16 @@ export function FolderItem({ folder, notes, childFolders, allNotes, allFolders, 
   };
 
   const handleDelete = async () => {
+    await deleteFolder(folder.id);
+  };
+
+  const getDeleteDescription = () => {
     const totalNotes = notes.length;
     const totalSubfolders = childFolders.length;
-    let message = `确定删除文件夹 "${folder.name}" 吗？`;
     if (totalNotes > 0 || totalSubfolders > 0) {
-      message = `文件夹 "${folder.name}" 包含 ${totalSubfolders > 0 ? `${totalSubfolders} 个子文件夹和 ` : ''}${totalNotes} 个笔记，删除后笔记将变为根级笔记。确定删除吗？`;
+      return `文件夹 "${folder.name}" 包含 ${totalSubfolders > 0 ? `${totalSubfolders} 个子文件夹和 ` : ''}${totalNotes} 个笔记，删除后笔记将变为根级笔记。确定删除吗？`;
     }
-    if (!window.confirm(message)) return;
-    await deleteFolder(folder.id);
+    return `确定删除文件夹 "${folder.name}" 吗？`;
   };
 
   const totalItems = notes.length + childFolders.length;
@@ -181,13 +185,24 @@ export function FolderItem({ folder, notes, childFolders, allNotes, allFolders, 
             <ContextMenu.Separator className="my-1 h-px bg-border" />
             <ContextMenu.Item
               className="flex cursor-pointer items-center rounded-md px-3 py-1.5 text-sm text-destructive outline-none hover:bg-accent transition-colors"
-              onSelect={handleDelete}
+              onSelect={() => setShowDeleteDialog(true)}
             >
               删除文件夹
             </ContextMenu.Item>
           </ContextMenu.Content>
         </ContextMenu.Portal>
       </ContextMenu.Root>
+
+      <ConfirmDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title="删除文件夹"
+        description={getDeleteDescription()}
+        confirmText="删除"
+        cancelText="取消"
+        variant="destructive"
+        onConfirm={handleDelete}
+      />
 
       {/* Children */}
       {folder.isExpanded && (
