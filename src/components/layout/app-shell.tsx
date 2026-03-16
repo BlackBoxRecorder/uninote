@@ -20,14 +20,16 @@ export function AppShell() {
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       <Header />
       {activeTab === "notes" ? (
-        <div className="flex flex-1 overflow-hidden">
-          <aside className="flex h-full w-64 flex-shrink-0 flex-col overflow-hidden border-r border-border bg-card">
-            <FileTree />
-          </aside>
+        <div className="flex flex-1 justify-center overflow-hidden">
+          <div className="flex h-full max-w-[1400px] w-full overflow-hidden">
+            <aside className="flex h-full w-64 flex-shrink-0 flex-col overflow-hidden border-r border-border bg-card">
+              <FileTree />
+            </aside>
 
-          <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background">
-            <PlateEditor key={selectedNoteId || "empty"} />
-          </main>
+            <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background">
+              <PlateEditor key={selectedNoteId || "empty"} />
+            </main>
+          </div>
         </div>
       ) : (
         <IdeasPage />
