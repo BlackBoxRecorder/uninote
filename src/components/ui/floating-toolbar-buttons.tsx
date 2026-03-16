@@ -3,6 +3,7 @@
 import {
   BoldIcon,
   Code2Icon,
+  HighlighterIcon,
   ItalicIcon,
   StrikethroughIcon,
   UnderlineIcon,
@@ -51,6 +52,10 @@ export function FloatingToolbarButtons() {
 
             <MarkToolbarButton nodeType={KEYS.code} tooltip="Code (⌘+E)">
               <Code2Icon />
+            </MarkToolbarButton>
+
+            <MarkToolbarButton nodeType={KEYS.highlight} tooltip="Highlight">
+              <HighlighterIcon />
             </MarkToolbarButton>
 
             <InlineEquationToolbarButton />
