@@ -7,6 +7,12 @@ import { FileText } from "lucide-react";
 import type { NoteMeta } from "@/types";
 import * as ContextMenu from "@radix-ui/react-context-menu";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface NoteItemProps {
   note: NoteMeta;
@@ -114,7 +120,16 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
               className="flex-1 rounded border border-brand bg-background px-1 py-0 text-sm text-foreground focus:outline-none min-w-0"
             />
           ) : (
-            <span className="truncate">{note.title}</span>
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="truncate">{note.title}</span>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>
+                  {note.title}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </button>
       </ContextMenu.Trigger>
