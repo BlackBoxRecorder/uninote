@@ -87,9 +87,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const content = typeof body.content === "string" ? body.content.trim() : "";
+    const imageIds: string[] = Array.isArray(body.imageIds) ? body.imageIds : [];
 
-    if (!content) {
-      return NextResponse.json({ error: "内容不能为空" }, { status: 400 });
+    if (!content && imageIds.length === 0) {
+      return NextResponse.json({ error: "内容和图片不能同时为空" }, { status: 400 });
     }
 
     const db = getDatabase();
@@ -115,7 +116,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const imageIds: string[] = Array.isArray(body.imageIds) ? body.imageIds : [];
     const resultImages: { id: string; ideaId: string; url: string; width: number | null; height: number | null }[] = [];
 
     for (const imgId of imageIds) {

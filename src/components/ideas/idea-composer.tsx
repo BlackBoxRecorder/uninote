@@ -82,7 +82,7 @@ export function IdeaComposer() {
 
   const handleSubmit = async () => {
     const trimmed = content.trim();
-    if (!trimmed || submitting) return;
+    if ((!trimmed && images.length === 0) || submitting) return;
 
     setSubmitting(true);
     try {
@@ -102,13 +102,6 @@ export function IdeaComposer() {
     }
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault();
-      handleSubmit();
-    }
-  };
-
   const ideaImages: IdeaImage[] = images.map((img) => ({
     id: img.id,
     ideaId: "",
@@ -123,7 +116,6 @@ export function IdeaComposer() {
         ref={textareaRef}
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        onKeyDown={handleKeyDown}
         placeholder="记录一个想法..."
         rows={3}
         className="w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
@@ -192,7 +184,7 @@ export function IdeaComposer() {
 
         <button
           onClick={handleSubmit}
-          disabled={!content.trim() || submitting}
+          disabled={(!content.trim() && images.length === 0) || submitting}
           className="flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-brand/90 disabled:opacity-50"
         >
           {submitting ? (
@@ -204,9 +196,6 @@ export function IdeaComposer() {
         </button>
       </div>
 
-      <p className="mt-1.5 text-right text-[10px] text-muted-foreground">
-        Ctrl+Enter 快速发布
-      </p>
     </div>
   );
 }
