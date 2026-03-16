@@ -34,6 +34,8 @@ interface AppState {
   renameFolder: (id: string, name: string) => Promise<void>;
   deleteFolder: (id: string) => Promise<void>;
   toggleFolder: (id: string) => Promise<void>;
+  expandAllFolders: () => Promise<void>;
+  collapseAllFolders: () => Promise<void>;
 
   // Note actions
   createNote: (folderId: string | null, title?: string) => Promise<NoteMeta | null>;
@@ -139,6 +141,50 @@ export const useAppStore = create<AppState>((set, get) => ({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isExpanded: newExpanded }),
     }).catch(() => {});
+  },
+
+  expandAllFolders: async () => {
+    const { folders } = get();
+    const collapsedFolders = folders.filter((f) => !f.isExpanded);
+    if (collapsedFolders.length === 0) return;
+
+    // Optimistically update UI
+    set((s) => ({
+      folders: s.folders.map((f) => ({ ...f, isExpanded: true })),
+    }));
+
+    // Batch update all collapsed folders
+    await Promise.all(
+      collapsedFolders.map((folder) =>
+        fetch(`/api/folders/${folder.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isExpanded: true }),
+        }).catch(() => {})
+      )
+    );
+  },
+
+  collapseAllFolders: async () => {
+    const { folders } = get();
+    const expandedFolders = folders.filter((f) => f.isExpanded);
+    if (expandedFolders.length === 0) return;
+
+    // Optimistically update UI
+    set((s) => ({
+      folders: s.folders.map((f) => ({ ...f, isExpanded: false })),
+    }));
+
+    // Batch update all expanded folders
+    await Promise.all(
+      expandedFolders.map((folder) =>
+        fetch(`/api/folders/${folder.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isExpanded: false }),
+        }).catch(() => {})
+      )
+    );
   },
 
   createNote: async (folderId, title) => {

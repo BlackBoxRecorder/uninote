@@ -11,6 +11,9 @@ import {
   Search,
   X,
   FileText,
+  ChevronsUpDown,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import type { NoteMeta } from "@/types";
 import { cn } from "@/lib/utils";
@@ -21,6 +24,8 @@ export function FileTree() {
   const createFolder = useAppStore((s) => s.createFolder);
   const createNote = useAppStore((s) => s.createNote);
   const setSelectedNoteId = useAppStore((s) => s.setSelectedNoteId);
+  const expandAllFolders = useAppStore((s) => s.expandAllFolders);
+  const collapseAllFolders = useAppStore((s) => s.collapseAllFolders);
   const loadNote = useEditorStore((s) => s.loadNote);
   const switchToNote = useEditorStore((s) => s.switchToNote);
   const saveStatus = useEditorStore((s) => s.saveStatus);
@@ -37,6 +42,10 @@ export function FileTree() {
   const rootFolders = folders.filter((f) => f.parentId === null);
   // Root-level notes (no folder)
   const rootNotes = notes.filter((n) => n.folderId === null);
+
+  // Check if all folders are expanded or collapsed
+  const allExpanded = folders.length > 0 && folders.every((f) => f.isExpanded);
+  const allCollapsed = folders.length === 0 || folders.every((f) => !f.isExpanded);
 
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) {
@@ -59,6 +68,14 @@ export function FileTree() {
       await loadNote(note.id);
       switchToNote(note.id);
       setSelectedNoteId(note.id);
+    }
+  };
+
+  const handleToggleAllFolders = () => {
+    if (allExpanded) {
+      collapseAllFolders();
+    } else {
+      expandAllFolders();
     }
   };
 
@@ -111,6 +128,20 @@ export function FileTree() {
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">文件</span>
         <div className="flex items-center gap-1">
+          <button
+            onClick={handleToggleAllFolders}
+            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
+            title={allExpanded ? "折叠所有文件夹" : "展开所有文件夹"}
+            disabled={folders.length === 0}
+          >
+            {allExpanded ? (
+              <ChevronDown className="h-3.5 w-3.5" />
+            ) : allCollapsed ? (
+              <ChevronRight className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronsUpDown className="h-3.5 w-3.5" />
+            )}
+          </button>
           <button
             onClick={handleCreateRootNote}
             className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
