@@ -1,7 +1,7 @@
 'use client';
 
 import { formatCodeBlock, isLangSupported } from '@platejs/code-block';
-import { BracesIcon, Check, CheckIcon, CopyIcon } from 'lucide-react';
+import { BracesIcon, Check, CheckIcon, ChevronDown, ChevronRight, CopyIcon } from 'lucide-react';
 import { NodeApi, type TCodeBlockElement, type TCodeSyntaxLeaf } from 'platejs';
 import {
   PlateElement,
@@ -32,6 +32,16 @@ import { cn } from '@/lib/utils';
 
 export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
   const { editor, element } = props;
+  const [collapsed, setCollapsed] = React.useState(element.collapsed ?? false);
+
+  const toggleCollapse = () => {
+    const newCollapsed = !collapsed;
+    setCollapsed(newCollapsed);
+    editor.tf.setNodes<TCodeBlockElement>(
+      { collapsed: newCollapsed },
+      { at: element }
+    );
+  };
 
   return (
     <PlateElement
@@ -39,35 +49,65 @@ export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
       {...props}
     >
       <div className="relative rounded-md bg-muted/50">
-        <pre className="overflow-x-auto p-8 pr-4 font-mono text-sm leading-[normal] [tab-size:2] print:break-inside-avoid">
-          <code>{props.children}</code>
-        </pre>
-
-        <div
-          className="absolute top-1 right-1 z-10 flex select-none gap-0.5"
+        <div 
+          className={cn(
+            "flex items-center justify-between px-3 py-2 border-b border-border/50 bg-muted/80 rounded-t-md",
+            !collapsed && "rounded-b-none"
+          )}
           contentEditable={false}
         >
-          {isLangSupported(element.lang) && (
-            <Button
-              className="size-6 text-xs"
-              onClick={() => formatCodeBlock(editor, { element })}
-              size="icon"
-              title="Format code"
-              variant="ghost"
-            >
-              <BracesIcon className="!size-3.5 text-muted-foreground" />
-            </Button>
-          )}
-
-          <CodeBlockCombobox />
-
-          <CopyButton
-            className="size-6 gap-1 text-muted-foreground text-xs"
-            size="icon"
-            value={() => NodeApi.string(element)}
+          <Button
+            className="h-6 px-1 text-xs gap-1 text-muted-foreground hover:text-foreground"
+            onClick={toggleCollapse}
+            size="sm"
             variant="ghost"
-          />
+          >
+            {collapsed ? (
+              <ChevronRight className="!size-3.5" />
+            ) : (
+              <ChevronDown className="!size-3.5" />
+            )}
+            <span className="text-xs">代码块</span>
+          </Button>
+          
+          {!collapsed && (
+            <div className="flex items-center gap-0.5">
+              {isLangSupported(element.lang) && (
+                <Button
+                  className="size-6 text-xs"
+                  onClick={() => formatCodeBlock(editor, { element })}
+                  size="icon"
+                  title="Format code"
+                  variant="ghost"
+                >
+                  <BracesIcon className="!size-3.5 text-muted-foreground" />
+                </Button>
+              )}
+
+              <CodeBlockCombobox />
+
+              <CopyButton
+                className="size-6 gap-1 text-muted-foreground text-xs"
+                size="icon"
+                value={() => NodeApi.string(element)}
+                variant="ghost"
+              />
+            </div>
+          )}
         </div>
+
+        {!collapsed && (
+          <pre className="overflow-x-auto p-4 pr-4 font-mono text-sm leading-[normal] [tab-size:2] print:break-inside-avoid">
+            <code>{props.children}</code>
+          </pre>
+        )}
+        
+        {collapsed && (
+          <div className="px-3 py-2 text-xs text-muted-foreground italic">
+            {NodeApi.string(element).slice(0, 50)}
+            {NodeApi.string(element).length > 50 ? '...' : ''}
+          </div>
+        )}
       </div>
     </PlateElement>
   );

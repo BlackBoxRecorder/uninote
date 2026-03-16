@@ -33,12 +33,15 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  ChevronDown,
+  ChevronRight,
   CombineIcon,
   EraserIcon,
   Grid2X2Icon,
   GripVertical,
   PaintBucketIcon,
   SquareSplitHorizontalIcon,
+  TableIcon,
   Trash2Icon,
   XIcon,
 } from 'lucide-react';
@@ -612,6 +615,18 @@ export const TableElement = withHOC(
     );
 
     const isSelectingTable = useBlockSelected(props.element.id as string);
+    const editor = useEditorRef();
+    const element = props.element;
+    const [collapsed, setCollapsed] = React.useState(element.collapsed ?? false);
+
+    const toggleCollapse = () => {
+      const newCollapsed = !collapsed;
+      setCollapsed(newCollapsed);
+      editor.tf.setNodes<TTableElement>(
+        { collapsed: newCollapsed },
+        { at: element }
+      );
+    };
 
     const content = (
       <PlateElement
@@ -628,6 +643,28 @@ export const TableElement = withHOC(
             ref={wrapperRef}
             style={tableVariableStyle}
           >
+            {/* 折叠按钮 - 左上角 */}
+            {hasControls && (
+              <div
+                className="absolute -top-6 left-0 z-20 flex items-center"
+                contentEditable={false}
+              >
+                <Button
+                  className="h-5 px-1 text-xs gap-0.5 text-muted-foreground hover:text-foreground"
+                  onClick={toggleCollapse}
+                  size="sm"
+                  variant="ghost"
+                >
+                  {collapsed ? (
+                    <ChevronRight className="!size-3.5" />
+                  ) : (
+                    <ChevronDown className="!size-3.5" />
+                  )}
+                  <span className="text-xs">表格</span>
+                </Button>
+              </div>
+            )}
+
             <div
               className="pointer-events-none absolute inset-y-0 z-36 hidden w-[3px] -translate-x-[1.5px] bg-ring/70"
               contentEditable={false}
@@ -638,46 +675,56 @@ export const TableElement = withHOC(
               contentEditable={false}
               ref={hoverIndicatorRef}
             />
-            <table
-              className={cn(
-                'mr-0 ml-px table h-px table-fixed border-collapse',
-                isSelectingCell && 'selection:bg-transparent'
-              )}
-              ref={tableRef}
-              style={tableStyle}
-              {...tableProps}
-            >
-              {colSizes.length > 0 && (
-                <colgroup>
-                  {hasControls && (
-                    <col
-                      style={{
-                        maxWidth: TABLE_CONTROL_COLUMN_WIDTH,
-                        minWidth: TABLE_CONTROL_COLUMN_WIDTH,
-                        width: TABLE_CONTROL_COLUMN_WIDTH,
-                      }}
-                    />
-                  )}
-                  {colSizes.map((colSize, index) => (
-                    <col
-                      key={index}
-                      style={
-                        colSize
-                          ? {
-                              maxWidth: colSize,
-                              minWidth: colSize,
-                              width: colSize,
-                            }
-                          : undefined
-                      }
-                    />
-                  ))}
-                </colgroup>
-              )}
-              <tbody className="min-w-full">{children}</tbody>
-            </table>
+            
+            {!collapsed ? (
+              <table
+                className={cn(
+                  'mr-0 ml-px table h-px table-fixed border-collapse',
+                  isSelectingCell && 'selection:bg-transparent'
+                )}
+                ref={tableRef}
+                style={tableStyle}
+                {...tableProps}
+              >
+                {colSizes.length > 0 && (
+                  <colgroup>
+                    {hasControls && (
+                      <col
+                        style={{
+                          maxWidth: TABLE_CONTROL_COLUMN_WIDTH,
+                          minWidth: TABLE_CONTROL_COLUMN_WIDTH,
+                          width: TABLE_CONTROL_COLUMN_WIDTH,
+                        }}
+                      />
+                    )}
+                    {colSizes.map((colSize, index) => (
+                      <col
+                        key={index}
+                        style={
+                          colSize
+                            ? {
+                                maxWidth: colSize,
+                                minWidth: colSize,
+                                width: colSize,
+                              }
+                            : undefined
+                        }
+                      />
+                    ))}
+                  </colgroup>
+                )}
+                <tbody className="min-w-full">{children}</tbody>
+              </table>
+            ) : (
+              <div className="flex items-center gap-2 px-3 py-2 border rounded-md bg-muted/30 text-muted-foreground text-sm min-w-[200px]">
+                <TableIcon className="!size-4" />
+                <span>
+                  {props.element.children.length} 行 × {colSizes.length} 列
+                </span>
+              </div>
+            )}
 
-            {isSelectingTable && (
+            {isSelectingTable && !collapsed && (
               <div
                 className={blockSelectionVariants()}
                 contentEditable={false}
