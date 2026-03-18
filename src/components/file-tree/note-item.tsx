@@ -27,6 +27,7 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
   const deleteNote = useAppStore((s) => s.deleteNote);
   const loadNote = useEditorStore((s) => s.loadNote);
   const switchToNote = useEditorStore((s) => s.switchToNote);
+  const setEditingType = useEditorStore((s) => s.setEditingType);
   const saveStatus = useEditorStore((s) => s.saveStatus);
   const saveCurrentNote = useEditorStore((s) => s.saveCurrentNote);
 
@@ -61,6 +62,7 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
     // 这样可以确保：
     // - PlateEditor 重新挂载时，initialContent 已经是新笔记的内容
     await loadNote(note.id);
+    setEditingType('note');
     switchToNote(note.id);
     setSelectedNoteId(note.id);
   };
@@ -69,6 +71,7 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
     const saved = await saveCurrentNote();
     if (saved) {
       await loadNote(note.id);
+      setEditingType('note');
       switchToNote(note.id);
       setSelectedNoteId(note.id);
     }
@@ -76,6 +79,7 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
 
   const handleDiscardAndSwitch = async () => {
     await loadNote(note.id);
+    setEditingType('note');
     switchToNote(note.id);
     setSelectedNoteId(note.id);
   };

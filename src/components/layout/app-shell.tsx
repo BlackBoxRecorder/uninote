@@ -4,6 +4,7 @@ import { FileTree } from "@/components/file-tree/file-tree";
 import { PlateEditor } from "@/components/editor/plate-editor";
 import { Header } from "@/components/layout/header";
 import { IdeasPage } from "@/components/ideas/ideas-page";
+import { DiaryPage } from "@/components/diary/diary-page";
 import { useAppStore } from "@/stores/app-store";
 import { useEffect } from "react";
 
@@ -19,7 +20,9 @@ export function AppShell() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       <Header />
-      {activeTab === "notes" ? (
+      {activeTab === "diary" ? (
+        <DiaryPage />
+      ) : activeTab === "notes" ? (
         <div className="flex flex-1 justify-center overflow-hidden">
           <div className="flex h-full max-w-[1400px] w-full overflow-hidden">
             <aside className="flex h-full w-64 flex-shrink-0 flex-col overflow-hidden border-r border-border bg-card">

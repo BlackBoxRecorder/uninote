@@ -109,6 +109,23 @@ function initializeDatabase(sqlite: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_idea_images_idea_id ON idea_images(idea_id);
     CREATE INDEX IF NOT EXISTS idx_idea_tags_idea_id ON idea_tags(idea_id);
     CREATE INDEX IF NOT EXISTS idx_idea_tags_tag_id ON idea_tags(tag_id);
+
+    CREATE TABLE IF NOT EXISTS diaries (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      date TEXT NOT NULL,
+      year INTEGER NOT NULL,
+      week_number INTEGER NOT NULL,
+      content TEXT,
+      markdown TEXT,
+      word_count INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_diaries_type_date ON diaries(type, date);
+    CREATE INDEX IF NOT EXISTS idx_diaries_year ON diaries(year);
+    CREATE INDEX IF NOT EXISTS idx_diaries_year_week ON diaries(year, week_number);
   `);
 
   // Initialize admin user if not exists

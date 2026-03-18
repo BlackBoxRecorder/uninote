@@ -3,8 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useEditorStore } from "@/stores/editor-store";
 import { useAppStore } from "@/stores/app-store";
-import { FileText, LogOut, Lightbulb, Save } from "lucide-react";
+import { FileText, LogOut, Lightbulb, CalendarDays, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDiaryStore } from "@/stores/diary-store";
 
 export function Header() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export function Header() {
   const activeTab = useAppStore((s) => s.activeTab);
   const setActiveTab = useAppStore((s) => s.setActiveTab);
   const selectedNoteId = useAppStore((s) => s.selectedNoteId);
+  const selectedDiaryId = useDiaryStore((s) => s.selectedDiaryId);
 
   const handleLogout = () => {
     document.cookie = "token=; path=/; max-age=0";
@@ -54,6 +56,18 @@ export function Header() {
             笔记
           </button>
           <button
+            onClick={() => setActiveTab("diary")}
+            className={cn(
+              "flex items-center gap-1.5 border-b-2 px-3 py-1 text-xs transition-colors",
+              activeTab === "diary"
+                ? "border-brand text-brand"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <CalendarDays className="h-3.5 w-3.5" />
+            日记
+          </button>
+          <button
             onClick={() => setActiveTab("ideas")}
             className={cn(
               "flex items-center gap-1.5 border-b-2 px-3 py-1 text-xs transition-colors",
@@ -70,7 +84,8 @@ export function Header() {
 
       <div className="flex items-center gap-3">
         {/* Save status + word count + save button */}
-        {activeTab === "notes" && selectedNoteId && (
+        {((activeTab === "notes" && selectedNoteId) ||
+          (activeTab === "diary" && selectedDiaryId)) && (
           <div className="flex items-center gap-3 text-xs">
             <span className="text-muted-foreground">{wordCount} 字</span>
             <span className={status.color}>{status.text}</span>

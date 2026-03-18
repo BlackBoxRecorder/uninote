@@ -19,6 +19,8 @@ export function PlateEditor() {
 
   // 用于跟踪基准内容（初始内容或保存后的内容），比较是否真的有修改
   const baselineContentRef = useRef<Value | null>(null);
+  // 用于标记编辑器是否已完成初始化，避免初始化时触发虚假的 unsaved 状态
+  const isInitializedRef = useRef(false);
 
   const editor = usePlateEditor({
     plugins: EditorKit,
@@ -28,6 +30,9 @@ export function PlateEditor() {
   const handleChange = useCallback(
     ({ value }: { value: Value }) => {
       if (!currentNoteId) return;
+
+      // 如果编辑器还未完成初始化，不处理 change 事件
+      if (!isInitializedRef.current) return;
 
       // 比较内容是否真的改变了（与基准内容比较）
       const baselineStr = JSON.stringify(baselineContentRef.current);
@@ -47,9 +52,18 @@ export function PlateEditor() {
 
   // Reset editor when note changes
   useEffect(() => {
+    // 先标记为未初始化
+    isInitializedRef.current = false;
+
     if (initialContent) {
       editor.tf.setValue(initialContent);
       baselineContentRef.current = initialContent;
+      // 延迟标记为已初始化，确保编辑器状态稳定
+      requestAnimationFrame(() => {
+        isInitializedRef.current = true;
+      });
+    } else {
+      baselineContentRef.current = null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentNoteId]);

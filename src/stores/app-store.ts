@@ -44,7 +44,7 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
-  activeTab: 'notes',
+  activeTab: 'diary',
   setActiveTab: (tab) => set({ activeTab: tab }),
 
   folders: [],

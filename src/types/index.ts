@@ -31,7 +31,7 @@ export interface Heading {
 
 export type SaveStatus = "saved" | "saving" | "unsaved" | "error";
 
-export type AppTab = "notes" | "ideas";
+export type AppTab = "notes" | "ideas" | "diary";
 
 export interface Tag {
   id: string;
@@ -55,3 +55,18 @@ export interface IdeaImage {
   width: number | null;
   height: number | null;
 }
+
+export interface DiaryEntry {
+  id: string;
+  type: "daily" | "weekly";
+  date: string;
+  year: number;
+  weekNumber: number;
+  content: string | null;
+  markdown: string | null;
+  wordCount: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type DiaryMeta = Omit<DiaryEntry, "content" | "markdown">;

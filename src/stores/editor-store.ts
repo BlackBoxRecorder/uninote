@@ -2,10 +2,16 @@ import { create } from 'zustand';
 import type { Value } from 'platejs';
 import type { SaveStatus } from '@/types';
 
+type EditingType = 'note' | 'diary';
+
 interface EditorState {
   // Current note
   currentNoteId: string | null;
   setCurrentNoteId: (id: string | null) => void;
+
+  // What type of entry is being edited
+  editingType: EditingType;
+  setEditingType: (type: EditingType) => void;
 
   // Editor content
   initialContent: Value | null;
@@ -26,6 +32,9 @@ interface EditorState {
   // Load note content (does NOT change currentNoteId)
   loadNote: (noteId: string) => Promise<void>;
 
+  // Load diary content (does NOT change currentNoteId)
+  loadDiary: (diaryId: string) => Promise<void>;
+
   // Switch to a new note (updates currentNoteId)
   switchToNote: (noteId: string) => void;
 
@@ -36,6 +45,9 @@ interface EditorState {
 export const useEditorStore = create<EditorState>((set, get) => ({
   currentNoteId: null,
   setCurrentNoteId: (id) => set({ currentNoteId: id }),
+
+  editingType: 'note',
+  setEditingType: (type) => set({ editingType: type }),
 
   initialContent: null,
   setInitialContent: (content) => set({ initialContent: content }),
@@ -77,6 +89,33 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
   },
 
+  loadDiary: async (diaryId: string) => {
+    try {
+      const res = await fetch(`/api/diaries/${diaryId}`);
+      if (!res.ok) return;
+
+      const diary = await res.json();
+      let content: Value | null = null;
+
+      if (diary.content) {
+        try {
+          content = JSON.parse(diary.content);
+        } catch {
+          content = [{ type: 'p', children: [{ text: diary.content }] }];
+        }
+      }
+
+      set({
+        initialContent: content || [{ type: 'p', children: [{ text: '' }] }],
+        currentContent: null,
+        wordCount: diary.wordCount || 0,
+        saveStatus: 'saved',
+      });
+    } catch (e) {
+      console.error('Failed to load diary:', e);
+    }
+  },
+
   switchToNote: (noteId: string) => {
     set({ currentNoteId: noteId });
   },
@@ -115,7 +154,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       // For mixed content, count all non-whitespace characters
       const wordCount = text.replace(/\s/g, '').length;
 
-      const res = await fetch(`/api/notes/${currentNoteId}`, {
+      const { editingType } = get();
+      const apiPath = editingType === 'diary'
+        ? `/api/diaries/${currentNoteId}`
+        : `/api/notes/${currentNoteId}`;
+
+      const res = await fetch(apiPath, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content, wordCount }),

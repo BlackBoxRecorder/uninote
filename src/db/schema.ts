@@ -86,3 +86,16 @@ export const ideaTags = sqliteTable("idea_tags", {
     .notNull()
     .references(() => tags.id, { onDelete: "cascade" }),
 });
+
+export const diaries = sqliteTable("diaries", {
+  id: text("id").primaryKey(),
+  type: text("type").notNull(), // 'daily' | 'weekly'
+  date: text("date").notNull(), // daily: '2026-03-18', weekly: '2026-W12'
+  year: integer("year").notNull(), // ISO week year
+  weekNumber: integer("week_number").notNull(), // ISO week number (1-53)
+  content: text("content"),
+  markdown: text("markdown"),
+  wordCount: integer("word_count").notNull().default(0),
+  createdAt: integer("created_at", { mode: "number" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "number" }).notNull(),
+});
