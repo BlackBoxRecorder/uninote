@@ -17,6 +17,9 @@ export const folders = sqliteTable("folders", {
   isExpanded: integer("is_expanded", { mode: "boolean" })
     .notNull()
     .default(true),
+  isArchived: integer("is_archived", { mode: "boolean" })
+    .notNull()
+    .default(false),
   createdAt: integer("created_at", { mode: "number" }).notNull(),
   updatedAt: integer("updated_at", { mode: "number" }).notNull(),
 });

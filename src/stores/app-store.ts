@@ -36,6 +36,8 @@ interface AppState {
   toggleFolder: (id: string) => Promise<void>;
   expandAllFolders: () => Promise<void>;
   collapseAllFolders: () => Promise<void>;
+  archiveFolder: (id: string) => Promise<void>;
+  unarchiveFolder: (id: string) => Promise<void>;
 
   // Note actions
   createNote: (folderId: string | null, title?: string) => Promise<NoteMeta | null>;
@@ -145,12 +147,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   expandAllFolders: async () => {
     const { folders } = get();
-    const collapsedFolders = folders.filter((f) => !f.isExpanded);
+    const collapsedFolders = folders.filter((f) => !f.isExpanded && !f.isArchived);
     if (collapsedFolders.length === 0) return;
 
-    // Optimistically update UI
+    // Optimistically update UI (only non-archived folders)
     set((s) => ({
-      folders: s.folders.map((f) => ({ ...f, isExpanded: true })),
+      folders: s.folders.map((f) => f.isArchived ? f : { ...f, isExpanded: true }),
     }));
 
     // Batch update all collapsed folders
@@ -167,12 +169,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   collapseAllFolders: async () => {
     const { folders } = get();
-    const expandedFolders = folders.filter((f) => f.isExpanded);
+    const expandedFolders = folders.filter((f) => f.isExpanded && !f.isArchived);
     if (expandedFolders.length === 0) return;
 
-    // Optimistically update UI
+    // Optimistically update UI (only non-archived folders)
     set((s) => ({
-      folders: s.folders.map((f) => ({ ...f, isExpanded: false })),
+      folders: s.folders.map((f) => f.isArchived ? f : { ...f, isExpanded: false }),
     }));
 
     // Batch update all expanded folders
@@ -185,6 +187,76 @@ export const useAppStore = create<AppState>((set, get) => ({
         }).catch(() => {})
       )
     );
+  },
+
+  archiveFolder: async (id) => {
+    const folder = get().folders.find((f) => f.id === id);
+    if (!folder || folder.isArchived) return;
+
+    // Optimistically update UI
+    set((s) => ({
+      folders: s.folders.map((f) =>
+        f.id === id ? { ...f, isArchived: true } : f
+      ),
+    }));
+
+    try {
+      const res = await fetch(`/api/folders/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isArchived: true }),
+      });
+      if (!res.ok) {
+        // Rollback on failure
+        set((s) => ({
+          folders: s.folders.map((f) =>
+            f.id === id ? { ...f, isArchived: false } : f
+          ),
+        }));
+      }
+    } catch {
+      // Rollback on error
+      set((s) => ({
+        folders: s.folders.map((f) =>
+          f.id === id ? { ...f, isArchived: false } : f
+        ),
+      }));
+    }
+  },
+
+  unarchiveFolder: async (id) => {
+    const folder = get().folders.find((f) => f.id === id);
+    if (!folder || !folder.isArchived) return;
+
+    // Optimistically update UI
+    set((s) => ({
+      folders: s.folders.map((f) =>
+        f.id === id ? { ...f, isArchived: false } : f
+      ),
+    }));
+
+    try {
+      const res = await fetch(`/api/folders/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isArchived: false }),
+      });
+      if (!res.ok) {
+        // Rollback on failure
+        set((s) => ({
+          folders: s.folders.map((f) =>
+            f.id === id ? { ...f, isArchived: true } : f
+          ),
+        }));
+      }
+    } catch {
+      // Rollback on error
+      set((s) => ({
+        folders: s.folders.map((f) =>
+          f.id === id ? { ...f, isArchived: true } : f
+        ),
+      }));
+    }
   },
 
   createNote: async (folderId, title) => {

@@ -38,6 +38,10 @@ export async function PATCH(
       updates.isExpanded = body.isExpanded;
     }
 
+    if (typeof body.isArchived === "boolean") {
+      updates.isArchived = body.isArchived;
+    }
+
     // Support moving folder to a new parent (2-level depth validation)
     if (body.parentId !== undefined) {
       if (body.parentId === null) {

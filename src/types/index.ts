@@ -4,6 +4,7 @@ export interface Folder {
   name: string;
   sortOrder: number;
   isExpanded: boolean;
+  isArchived: boolean;
   createdAt: number;
   updatedAt: number;
 }

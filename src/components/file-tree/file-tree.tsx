@@ -14,6 +14,7 @@ import {
   ChevronsUpDown,
   ChevronDown,
   ChevronRight,
+  Archive,
 } from "lucide-react";
 import type { NoteMeta } from "@/types";
 import { cn } from "@/lib/utils";
@@ -37,15 +38,19 @@ export function FileTree() {
   const [searchResults, setSearchResults] = useState<NoteMeta[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [archiveExpanded, setArchiveExpanded] = useState(false);
 
-  // Root-level folders (no parent)
-  const rootFolders = folders.filter((f) => f.parentId === null);
+  // Root-level folders (no parent, not archived)
+  const rootFolders = folders.filter((f) => f.parentId === null && !f.isArchived);
   // Root-level notes (no folder)
   const rootNotes = notes.filter((n) => n.folderId === null);
+  // Archived folders
+  const archivedFolders = folders.filter((f) => f.isArchived);
 
-  // Check if all folders are expanded or collapsed
-  const allExpanded = folders.length > 0 && folders.every((f) => f.isExpanded);
-  const allCollapsed = folders.length === 0 || folders.every((f) => !f.isExpanded);
+  // Check if all non-archived folders are expanded or collapsed
+  const activeFolders = folders.filter((f) => !f.isArchived);
+  const allExpanded = activeFolders.length > 0 && activeFolders.every((f) => f.isExpanded);
+  const allCollapsed = activeFolders.length === 0 || activeFolders.every((f) => !f.isExpanded);
 
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) {
@@ -226,7 +231,7 @@ export function FileTree() {
                 key={folder.id}
                 folder={folder}
                 notes={notes.filter((n) => n.folderId === folder.id)}
-                childFolders={folders.filter((f) => f.parentId === folder.id)}
+                childFolders={folders.filter((f) => f.parentId === folder.id && !f.isArchived)}
                 allNotes={notes}
                 allFolders={folders}
               />
@@ -244,7 +249,44 @@ export function FileTree() {
               </div>
             )}
 
-            {rootFolders.length === 0 && rootNotes.length === 0 && !creatingFolder && (
+            {/* Archived folders section */}
+            {archivedFolders.length > 0 && (
+              <div className="mt-2 border-t border-border pt-1">
+                <button
+                  onClick={() => setArchiveExpanded(!archiveExpanded)}
+                  className="group flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent transition-colors"
+                >
+                  {archiveExpanded ? (
+                    <ChevronDown className="h-3.5 w-3.5 flex-shrink-0" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5 flex-shrink-0" />
+                  )}
+                  <Archive className="h-4 w-4 flex-shrink-0" />
+                  <span>已归档</span>
+                  <span className="ml-auto text-xs opacity-0 group-hover:opacity-100">
+                    {archivedFolders.length}
+                  </span>
+                </button>
+                {archiveExpanded && (
+                  <div>
+                    {archivedFolders.map((folder) => (
+                      <FolderItem
+                        key={folder.id}
+                        folder={folder}
+                        notes={notes.filter((n) => n.folderId === folder.id)}
+                        childFolders={folders.filter((f) => f.parentId === folder.id && !f.isArchived)}
+                        allNotes={notes}
+                        allFolders={folders}
+                        depth={1}
+                        isInArchive
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {rootFolders.length === 0 && rootNotes.length === 0 && archivedFolders.length === 0 && !creatingFolder && (
               <div className="px-3 py-8 text-center text-xs text-muted-foreground">
                 <p>暂无内容</p>
                 <p className="mt-1">点击上方按钮创建文件夹或笔记</p>

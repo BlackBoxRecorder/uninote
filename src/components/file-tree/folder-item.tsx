@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useAppStore } from "@/stores/app-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { NoteItem } from "./note-item";
-import { ChevronRight, ChevronDown, Folder, FolderPlus, FilePlus } from "lucide-react";
+import { ChevronRight, ChevronDown, Folder, FolderPlus, FilePlus, Archive, ArchiveRestore } from "lucide-react";
 import type { Folder as FolderType, NoteMeta } from "@/types";
 import * as ContextMenu from "@radix-ui/react-context-menu";
 import { cn } from "@/lib/utils";
@@ -17,14 +17,17 @@ interface FolderItemProps {
   allNotes: NoteMeta[];
   allFolders: FolderType[];
   depth?: number;
+  isInArchive?: boolean;
 }
 
-export function FolderItem({ folder, notes, childFolders, allNotes, allFolders, depth = 0 }: FolderItemProps) {
+export function FolderItem({ folder, notes, childFolders, allNotes, allFolders, depth = 0, isInArchive = false }: FolderItemProps) {
   const toggleFolder = useAppStore((s) => s.toggleFolder);
   const renameFolder = useAppStore((s) => s.renameFolder);
   const deleteFolder = useAppStore((s) => s.deleteFolder);
   const createNote = useAppStore((s) => s.createNote);
   const createFolder = useAppStore((s) => s.createFolder);
+  const archiveFolder = useAppStore((s) => s.archiveFolder);
+  const unarchiveFolder = useAppStore((s) => s.unarchiveFolder);
   const setSelectedNoteId = useAppStore((s) => s.setSelectedNoteId);
   const loadNote = useEditorStore((s) => s.loadNote);
   const switchToNote = useEditorStore((s) => s.switchToNote);
@@ -183,6 +186,25 @@ export function FolderItem({ folder, notes, childFolders, allNotes, allFolders, 
               重命名
             </ContextMenu.Item>
             <ContextMenu.Separator className="my-1 h-px bg-border" />
+            {!isInArchive && (
+              <ContextMenu.Item
+                className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-sm text-popover-foreground outline-none hover:bg-accent transition-colors"
+                onSelect={() => archiveFolder(folder.id)}
+              >
+                <Archive className="h-3.5 w-3.5" />
+                移入归档
+              </ContextMenu.Item>
+            )}
+            {isInArchive && folder.isArchived && (
+              <ContextMenu.Item
+                className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-sm text-popover-foreground outline-none hover:bg-accent transition-colors"
+                onSelect={() => unarchiveFolder(folder.id)}
+              >
+                <ArchiveRestore className="h-3.5 w-3.5" />
+                取消归档
+              </ContextMenu.Item>
+            )}
+            <ContextMenu.Separator className="my-1 h-px bg-border" />
             <ContextMenu.Item
               className="flex cursor-pointer items-center rounded-md px-3 py-1.5 text-sm text-destructive outline-none hover:bg-accent transition-colors"
               onSelect={() => setShowDeleteDialog(true)}
@@ -235,10 +257,11 @@ export function FolderItem({ folder, notes, childFolders, allNotes, allFolders, 
               key={child.id}
               folder={child}
               notes={allNotes.filter((n) => n.folderId === child.id)}
-              childFolders={allFolders.filter((f) => f.parentId === child.id)}
+              childFolders={allFolders.filter((f) => f.parentId === child.id && !f.isArchived)}
               allNotes={allNotes}
               allFolders={allFolders}
               depth={depth + 1}
+              isInArchive={isInArchive}
             />
           ))}
 

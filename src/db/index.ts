@@ -39,6 +39,7 @@ function initializeDatabase(sqlite: Database.Database) {
       name TEXT NOT NULL,
       sort_order INTEGER NOT NULL DEFAULT 0,
       is_expanded INTEGER NOT NULL DEFAULT 1,
+      is_archived INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
@@ -127,6 +128,16 @@ function initializeDatabase(sqlite: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_diaries_year ON diaries(year);
     CREATE INDEX IF NOT EXISTS idx_diaries_year_week ON diaries(year, week_number);
   `);
+
+  // Migration: add is_archived column to existing folders table
+  const cols = sqlite
+    .prepare("PRAGMA table_info(folders)")
+    .all() as { name: string }[];
+  if (!cols.some((c) => c.name === "is_archived")) {
+    sqlite.exec(
+      "ALTER TABLE folders ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0"
+    );
+  }
 
   // Initialize admin user if not exists
   const authKey = process.env.AUTH_SECRET_KEY;
