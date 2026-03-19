@@ -9,6 +9,57 @@ import { EditorKit } from '@/components/editor/editor-kit';
 import { Editor, EditorContainer } from '@/components/ui/editor';
 import { useEditorStore } from '@/stores/editor-store';
 
+/**
+ * Fast comparison of two editor values without JSON.stringify.
+ * Returns true if values are structurally equal.
+ */
+function isEqualValue(a: Value | null, b: Value | null): boolean {
+  // Fast path: same reference
+  if (a === b) return true;
+  // Fast path: one is null
+  if (!a || !b) return false;
+  // Fast path: different lengths
+  if (a.length !== b.length) return false;
+
+  // Compare each node recursively
+  for (let i = 0; i < a.length; i++) {
+    if (!isEqualNode(a[i], b[i])) return false;
+  }
+  return true;
+}
+
+function isEqualNode(a: unknown, b: unknown): boolean {
+  // Primitive comparison
+  if (typeof a !== 'object' || typeof b !== 'object') return a === b;
+  if (a === null || b === null) return a === b;
+
+  const aObj = a as Record<string, unknown>;
+  const bObj = b as Record<string, unknown>;
+
+  // Compare text nodes
+  if ('text' in aObj && 'text' in bObj) {
+    return aObj.text === bObj.text;
+  }
+
+  // Compare type
+  if (aObj.type !== bObj.type) return false;
+
+  // Compare children recursively
+  const aChildren = aObj.children as unknown[] | undefined;
+  const bChildren = bObj.children as unknown[] | undefined;
+
+  if (aChildren && bChildren) {
+    if (aChildren.length !== bChildren.length) return false;
+    for (let i = 0; i < aChildren.length; i++) {
+      if (!isEqualNode(aChildren[i], bChildren[i])) return false;
+    }
+  } else if (aChildren !== bChildren) {
+    return false;
+  }
+
+  return true;
+}
+
 export function PlateEditor() {
   const {
     currentNoteId,
@@ -34,10 +85,8 @@ export function PlateEditor() {
       if (!currentNoteId) return;
       if (!isInitializedRef.current) return;
 
-      const baselineStr = JSON.stringify(baselineContentRef.current);
-      const currentStr = JSON.stringify(value);
-
-      if (baselineStr !== currentStr) {
+      // Use fast comparison instead of JSON.stringify
+      if (!isEqualValue(value, baselineContentRef.current)) {
         setSaveStatus('unsaved');
         setCurrentContent(value);
       } else {
