@@ -6,7 +6,6 @@ import { useDiaryStore } from "@/stores/diary-store";
 import { useEffect } from "react";
 
 export function DiaryPage() {
-  const selectedDiaryId = useDiaryStore((s) => s.selectedDiaryId);
   const initDiary = useDiaryStore((s) => s.initDiary);
 
   useEffect(() => {
@@ -21,7 +20,7 @@ export function DiaryPage() {
         </aside>
 
         <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background">
-          <PlateEditor key={selectedDiaryId || "diary-empty"} />
+          <PlateEditor />
         </main>
       </div>
     </div>

@@ -4,6 +4,14 @@ import type { SaveStatus } from '@/types';
 
 type EditingType = 'note' | 'diary';
 
+const MAX_CACHE_SIZE = 20;
+
+interface CachedContent {
+  content: Value;
+  wordCount: number;
+  timestamp: number;
+}
+
 interface EditorState {
   // Current note
   currentNoteId: string | null;
@@ -29,6 +37,12 @@ interface EditorState {
   wordCount: number;
   setWordCount: (count: number) => void;
 
+  // Loading state
+  isLoadingContent: boolean;
+
+  // Content cache (LRU)
+  contentCache: Map<string, CachedContent>;
+
   // Load note content (does NOT change currentNoteId)
   loadNote: (noteId: string) => Promise<void>;
 
@@ -40,6 +54,31 @@ interface EditorState {
 
   // Manual save
   saveCurrentNote: () => Promise<boolean>;
+
+  // Cache management
+  invalidateCache: (id: string) => void;
+}
+
+function evictCache(cache: Map<string, CachedContent>) {
+  if (cache.size <= MAX_CACHE_SIZE) return;
+  let oldestKey: string | null = null;
+  let oldestTime = Infinity;
+  for (const [key, entry] of cache) {
+    if (entry.timestamp < oldestTime) {
+      oldestTime = entry.timestamp;
+      oldestKey = key;
+    }
+  }
+  if (oldestKey) cache.delete(oldestKey);
+}
+
+function parseContent(raw: string | null | undefined): Value {
+  if (!raw) return [{ type: 'p', children: [{ text: '' }] }];
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [{ type: 'p', children: [{ text: raw }] }];
+  }
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -61,58 +100,93 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   wordCount: 0,
   setWordCount: (count) => set({ wordCount: count }),
 
+  isLoadingContent: false,
+
+  contentCache: new Map(),
+
   loadNote: async (noteId: string) => {
+    const { contentCache } = get();
+
+    // Check cache first
+    const cached = contentCache.get(noteId);
+    if (cached) {
+      cached.timestamp = Date.now();
+      set({
+        initialContent: cached.content,
+        currentContent: null,
+        wordCount: cached.wordCount,
+        saveStatus: 'saved',
+      });
+      return;
+    }
+
+    // Cache miss: fetch from API
+    set({ isLoadingContent: true });
     try {
       const res = await fetch(`/api/notes/${noteId}`);
       if (!res.ok) return;
 
       const note = await res.json();
-      let content: Value | null = null;
+      const content = parseContent(note.content);
+      const wordCount = note.wordCount || 0;
 
-      if (note.content) {
-        try {
-          content = JSON.parse(note.content);
-        } catch {
-          // If content is not valid JSON, create a paragraph
-          content = [{ type: 'p', children: [{ text: note.content }] }];
-        }
-      }
+      // Write to cache
+      contentCache.set(noteId, { content, wordCount, timestamp: Date.now() });
+      evictCache(contentCache);
 
       set({
-        initialContent: content || [{ type: 'p', children: [{ text: '' }] }],
-        currentContent: null, // Reset current content when loading new note
-        wordCount: note.wordCount || 0,
+        initialContent: content,
+        currentContent: null,
+        wordCount,
         saveStatus: 'saved',
       });
     } catch (e) {
       console.error('Failed to load note:', e);
+    } finally {
+      set({ isLoadingContent: false });
     }
   },
 
   loadDiary: async (diaryId: string) => {
+    const { contentCache } = get();
+
+    // Check cache first
+    const cached = contentCache.get(diaryId);
+    if (cached) {
+      cached.timestamp = Date.now();
+      set({
+        initialContent: cached.content,
+        currentContent: null,
+        wordCount: cached.wordCount,
+        saveStatus: 'saved',
+      });
+      return;
+    }
+
+    // Cache miss: fetch from API
+    set({ isLoadingContent: true });
     try {
       const res = await fetch(`/api/diaries/${diaryId}`);
       if (!res.ok) return;
 
       const diary = await res.json();
-      let content: Value | null = null;
+      const content = parseContent(diary.content);
+      const wordCount = diary.wordCount || 0;
 
-      if (diary.content) {
-        try {
-          content = JSON.parse(diary.content);
-        } catch {
-          content = [{ type: 'p', children: [{ text: diary.content }] }];
-        }
-      }
+      // Write to cache
+      contentCache.set(diaryId, { content, wordCount, timestamp: Date.now() });
+      evictCache(contentCache);
 
       set({
-        initialContent: content || [{ type: 'p', children: [{ text: '' }] }],
+        initialContent: content,
         currentContent: null,
-        wordCount: diary.wordCount || 0,
+        wordCount,
         saveStatus: 'saved',
       });
     } catch (e) {
       console.error('Failed to load diary:', e);
+    } finally {
+      set({ isLoadingContent: false });
     }
   },
 
@@ -121,7 +195,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   saveCurrentNote: async () => {
-    const { currentNoteId, currentContent } = get();
+    const { currentNoteId, currentContent, contentCache } = get();
     if (!currentNoteId || !currentContent) return false;
 
     set({ saveStatus: 'saving' });
@@ -136,10 +210,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             if (!node || typeof node !== 'object') return '';
             const n = node as Record<string, unknown>;
 
-            // If it's a text node, return the text
             if (typeof n.text === 'string') return n.text;
 
-            // If it has children, recurse
             if (Array.isArray(n.children)) {
               return extractText(n.children);
             }
@@ -150,8 +222,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       };
 
       const text = extractText(currentContent);
-      // Count characters for Chinese (no spaces between words)
-      // For mixed content, count all non-whitespace characters
       const wordCount = text.replace(/\s/g, '').length;
 
       const { editingType } = get();
@@ -166,6 +236,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       });
 
       if (res.ok) {
+        // Update cache with saved content
+        contentCache.set(currentNoteId, {
+          content: currentContent,
+          wordCount,
+          timestamp: Date.now(),
+        });
         set({ saveStatus: 'saved', wordCount });
         return true;
       } else {
@@ -176,5 +252,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       set({ saveStatus: 'error' });
       return false;
     }
+  },
+
+  invalidateCache: (id: string) => {
+    get().contentCache.delete(id);
   },
 }));

@@ -50,38 +50,33 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
   const handleClick = async () => {
     if (renaming) return;
 
-    // 如果当前有未保存的内容，提示用户
     if (saveStatus === "unsaved") {
       setShowSaveDialog(true);
       return;
     }
 
-    // 流程：
-    // 1. 先加载笔记内容（loadNote 不改变 currentNoteId）
-    // 2. 再切换到新笔记（switchToNote 更新 currentNoteId）
-    // 这样可以确保：
-    // - PlateEditor 重新挂载时，initialContent 已经是新笔记的内容
-    await loadNote(note.id);
-    setEditingType('note');
-    switchToNote(note.id);
+    // Immediately update UI selection for instant feedback
     setSelectedNoteId(note.id);
+    setEditingType('note');
+    await loadNote(note.id);
+    switchToNote(note.id);
   };
 
   const handleSaveAndSwitch = async () => {
     const saved = await saveCurrentNote();
     if (saved) {
-      await loadNote(note.id);
-      setEditingType('note');
-      switchToNote(note.id);
       setSelectedNoteId(note.id);
+      setEditingType('note');
+      await loadNote(note.id);
+      switchToNote(note.id);
     }
   };
 
   const handleDiscardAndSwitch = async () => {
-    await loadNote(note.id);
-    setEditingType('note');
-    switchToNote(note.id);
     setSelectedNoteId(note.id);
+    setEditingType('note');
+    await loadNote(note.id);
+    switchToNote(note.id);
   };
 
   const handleRename = async () => {

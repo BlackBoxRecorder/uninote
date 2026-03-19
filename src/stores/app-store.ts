@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Folder, NoteMeta, AppTab } from '@/types';
+import { useEditorStore } from './editor-store';
 
 interface AppState {
   // Tab
@@ -303,6 +304,11 @@ export const useAppStore = create<AppState>((set, get) => ({
           notes: s.notes.filter((n) => n.id !== id),
           selectedNoteId: selectedNoteId === id ? null : selectedNoteId,
         }));
+        // Clear from editor content cache
+        useEditorStore.getState().invalidateCache(id);
+        if (selectedNoteId === id) {
+          useEditorStore.getState().setCurrentNoteId(null);
+        }
       }
     } catch (e) {
       console.error('Failed to delete note:', e);

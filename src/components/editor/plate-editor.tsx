@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { type Value } from 'platejs';
 import { Plate, usePlateEditor } from 'platejs/react';
+import { Loader2 } from 'lucide-react';
 
 import { EditorKit } from '@/components/editor/editor-kit';
 import { Editor, EditorContainer } from '@/components/ui/editor';
@@ -13,14 +14,15 @@ export function PlateEditor() {
     currentNoteId,
     initialContent,
     saveStatus,
+    isLoadingContent,
     setSaveStatus,
     setCurrentContent,
   } = useEditorStore();
 
-  // 用于跟踪基准内容（初始内容或保存后的内容），比较是否真的有修改
   const baselineContentRef = useRef<Value | null>(null);
-  // 用于标记编辑器是否已完成初始化，避免初始化时触发虚假的 unsaved 状态
   const isInitializedRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const prevNoteIdRef = useRef<string | null>(null);
 
   const editor = usePlateEditor({
     plugins: EditorKit,
@@ -30,11 +32,8 @@ export function PlateEditor() {
   const handleChange = useCallback(
     ({ value }: { value: Value }) => {
       if (!currentNoteId) return;
-
-      // 如果编辑器还未完成初始化，不处理 change 事件
       if (!isInitializedRef.current) return;
 
-      // 比较内容是否真的改变了（与基准内容比较）
       const baselineStr = JSON.stringify(baselineContentRef.current);
       const currentStr = JSON.stringify(value);
 
@@ -42,7 +41,6 @@ export function PlateEditor() {
         setSaveStatus('unsaved');
         setCurrentContent(value);
       } else {
-        // 内容与基准内容相同，确保状态是 saved
         setSaveStatus('saved');
         setCurrentContent(null);
       }
@@ -52,13 +50,32 @@ export function PlateEditor() {
 
   // Reset editor when note changes
   useEffect(() => {
-    // 先标记为未初始化
+    if (currentNoteId === prevNoteIdRef.current) return;
+    prevNoteIdRef.current = currentNoteId;
+
     isInitializedRef.current = false;
 
     if (initialContent) {
       editor.tf.setValue(initialContent);
+
+      // Clear undo/redo history to prevent cross-note undo
+      if (editor.history) {
+        editor.history.undos = [];
+        editor.history.redos = [];
+      }
+
+      // Deselect to avoid stale selection referencing old content
+      if (editor.selection) {
+        editor.selection = null;
+      }
+
       baselineContentRef.current = initialContent;
-      // 延迟标记为已初始化，确保编辑器状态稳定
+
+      // Scroll editor container to top
+      if (containerRef.current) {
+        containerRef.current.scrollTop = 0;
+      }
+
       requestAnimationFrame(() => {
         isInitializedRef.current = true;
       });
@@ -66,30 +83,33 @@ export function PlateEditor() {
       baselineContentRef.current = null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentNoteId]);
+  }, [currentNoteId, initialContent]);
 
-  // 保存成功后更新基准内容
+  // Update baseline after save
   useEffect(() => {
     if (saveStatus === 'saved' && currentNoteId) {
-      // 获取当前编辑器内容作为新的基准
       baselineContentRef.current = editor.children as Value;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saveStatus]);
 
-  if (!currentNoteId) {
-    return (
-      <div className="flex h-full items-center justify-center text-muted-foreground">
-        选择或创建一篇笔记开始编辑
-      </div>
-    );
-  }
-
   return (
     <Plate editor={editor} onChange={handleChange}>
-      <EditorContainer>
-        <Editor variant="default" />
-      </EditorContainer>
+      <div className="relative h-full">
+        {!currentNoteId && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background text-muted-foreground">
+            选择或创建一篇笔记开始编辑
+          </div>
+        )}
+        {isLoadingContent && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
+        <EditorContainer ref={containerRef}>
+          <Editor variant="default" />
+        </EditorContainer>
+      </div>
     </Plate>
   );
 }
