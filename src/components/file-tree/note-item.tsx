@@ -105,9 +105,9 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "上传失败");
-      toast.success("已上传到飞书文档");
+      toast.success(data.message || "已上传到飞书云空间");
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : "上传到飞书文档失败";
+      const message = e instanceof Error ? e.message : "上传到飞书云空间失败";
       toast.error(message);
     } finally {
       setLarkUploading(false);
@@ -184,7 +184,7 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
             disabled={larkUploading}
             onSelect={handleUploadToLark}
           >
-            {larkUploading ? "正在上传..." : "上传到飞书文档"}
+            {larkUploading ? "正在上传..." : "上传到飞书云空间"}
           </ContextMenu.Item>
           <ContextMenu.Separator className="my-1 h-px bg-border" />
           <ContextMenu.Item
