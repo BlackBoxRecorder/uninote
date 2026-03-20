@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ConfirmDialog, SaveConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "sonner";
 
 interface NoteItemProps {
   note: NoteMeta;
@@ -37,6 +38,7 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
 
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [larkUploading, setLarkUploading] = useState(false);
 
   const isActive = selectedNoteId === note.id;
 
@@ -93,6 +95,23 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
 
   const handleDelete = async () => {
     await deleteNote(note.id);
+  };
+
+  const handleUploadToLark = async () => {
+    setLarkUploading(true);
+    try {
+      const res = await fetch(`/api/notes/${note.id}/upload-to-lark`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "上传失败");
+      toast.success("已上传到飞书文档");
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "上传到飞书文档失败";
+      toast.error(message);
+    } finally {
+      setLarkUploading(false);
+    }
   };
 
   return (
@@ -159,6 +178,13 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
             onSelect={handleDownload}
           >
             下载为 Markdown
+          </ContextMenu.Item>
+          <ContextMenu.Item
+            className="flex cursor-pointer items-center rounded-md px-3 py-1.5 text-sm text-popover-foreground outline-none hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={larkUploading}
+            onSelect={handleUploadToLark}
+          >
+            {larkUploading ? "正在上传..." : "上传到飞书文档"}
           </ContextMenu.Item>
           <ContextMenu.Separator className="my-1 h-px bg-border" />
           <ContextMenu.Item

@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     "sharp",
     "cos-nodejs-sdk-v5",
     "bcryptjs",
+    "@larksuiteoapi/node-sdk",
   ],
   experimental: {
     proxyClientMaxBodySize: "100mb",

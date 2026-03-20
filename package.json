@@ -6,11 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "lark:ws": "tsx scripts/lark-websocket.ts",
+    "dev:ws": "concurrently \"npm run dev\" \"npm run lark:ws\""
   },
   "dependencies": {
     "@ariakit/react": "^0.4.23",
     "@emoji-mart/data": "^1.2.1",
+    "@larksuiteoapi/node-sdk": "^1.59.0",
     "@platejs/autoformat": "^52.3.4",
     "@platejs/basic-nodes": "^52.0.11",
     "@platejs/basic-styles": "^52.0.11",
@@ -99,10 +102,13 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
+    "dotenv": "^17.3.1",
     "drizzle-kit": "^0.31.9",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
