@@ -97,17 +97,17 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
     await deleteNote(note.id);
   };
 
-  const handleUploadToLark = async () => {
+  const handleImportToLark = async () => {
     setLarkUploading(true);
     try {
       const res = await fetch(`/api/notes/${note.id}/upload-to-lark`, {
         method: "POST",
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "上传失败");
-      toast.success(data.message || "已上传到飞书云空间");
+      if (!res.ok) throw new Error(data.error || "导入失败");
+      toast.success(data.message || "已导入到飞书文档");
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : "上传到飞书云空间失败";
+      const message = e instanceof Error ? e.message : "导入到飞书文档失败";
       toast.error(message);
     } finally {
       setLarkUploading(false);
@@ -182,9 +182,9 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
           <ContextMenu.Item
             className="flex cursor-pointer items-center rounded-md px-3 py-1.5 text-sm text-popover-foreground outline-none hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={larkUploading}
-            onSelect={handleUploadToLark}
+            onSelect={handleImportToLark}
           >
-            {larkUploading ? "正在上传..." : "上传到飞书云空间"}
+            {larkUploading ? "正在导入..." : "导入到飞书文档"}
           </ContextMenu.Item>
           <ContextMenu.Separator className="my-1 h-px bg-border" />
           <ContextMenu.Item
