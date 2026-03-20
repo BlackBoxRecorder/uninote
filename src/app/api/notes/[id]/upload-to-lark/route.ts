@@ -6,6 +6,7 @@ import {
   isLarkConfigured,
   getTenantAccessToken,
   ensureFolderPath,
+  deleteFile,
 } from "@/lib/lark";
 import { serializeNoteToMarkdown } from "@/lib/server-markdown";
 
@@ -301,6 +302,9 @@ export async function POST(
 
     // 7. 轮询导入状态
     const { docUrl } = await pollImportStatus(tenantToken, ticket);
+
+    // 8. 导入成功后删除临时上传的 markdown 文件
+    await deleteFile(tenantToken, fileToken, "file");
 
     console.log("[lark import] Import completed successfully:", docUrl);
     

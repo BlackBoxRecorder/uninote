@@ -332,3 +332,35 @@ export async function ensureFolderPath(
 
   return currentToken;
 }
+
+/**
+ * 删除云空间中的文件
+ * API: DELETE /open-apis/drive/v1/files/:file_token
+ * @param tenantToken 飞书 tenant access token
+ * @param fileToken 要删除的文件 token
+ * @param type 文件类型，默认为 "file"
+ */
+export async function deleteFile(
+  tenantToken: string,
+  fileToken: string,
+  type: "file" | "docx" | "bitable" | "folder" | "doc" | "sheet" | "mindnote" | "shortcut" | "slides" = "file"
+): Promise<void> {
+  const url = new URL(`https://open.feishu.cn/open-apis/drive/v1/files/${fileToken}`);
+  url.searchParams.set("type", type);
+
+  const response = await fetch(url.toString(), {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${tenantToken}`,
+    },
+  });
+
+  const result = await response.json() as { code: number; msg: string; data?: { task_id?: string } };
+
+  if (result.code !== 0) {
+    console.error("[lark] 删除文件失败:", result.msg, "file_token:", fileToken);
+    // 不抛出错误，只记录日志，避免影响主流程
+  } else {
+    console.log("[lark] 文件已删除:", fileToken);
+  }
+}
