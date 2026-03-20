@@ -1,7 +1,12 @@
 'use client';
 
 import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu';
-import { DownloadIcon, FileCodeIcon, FileTextIcon } from 'lucide-react';
+import {
+  DownloadIcon,
+  FileCodeIcon,
+  FileTextIcon,
+  FileTypeIcon,
+} from 'lucide-react';
 import { useEditorRef } from 'platejs/react';
 import * as React from 'react';
 import { toast } from 'sonner';
@@ -16,6 +21,17 @@ import {
 import { useEditorStore } from '@/stores/editor-store';
 
 import { ToolbarButton } from './toolbar';
+
+// Dynamic imports to avoid SSR issues
+const loadDocxLibs = async () => {
+  const [docx, remark, remarkGfm, remarkDocx] = await Promise.all([
+    import('docx'),
+    import('remark'),
+    import('remark-gfm'),
+    import('remark-docx'),
+  ]);
+  return { docx, remark, remarkGfm, remarkDocx };
+};
 
 export function ExportToolbarButton(props: DropdownMenuProps) {
   const editor = useEditorRef();
@@ -175,6 +191,67 @@ ${htmlContent}
     setOpen(false);
   }, [editor, currentNoteId]);
 
+  const handleExportDocx = React.useCallback(async () => {
+    if (!currentNoteId) {
+      toast.error('请先选择一篇笔记');
+      return;
+    }
+
+    try {
+      // Fetch the note data to get title
+      const response = await fetch(`/api/notes/${currentNoteId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch note');
+      }
+      const note = await response.json();
+
+      // Get the current editor content
+      const value = editor.children;
+
+      // Serialize to markdown first
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const markdown = (editor.api as any).markdown.serialize({ value });
+
+      // Load libraries dynamically
+      const { remark, remarkGfm, remarkDocx } = await loadDocxLibs();
+
+      // Use remark-docx to convert markdown to docx
+      const processor = remark.remark()
+        .use(remarkGfm.default)
+        .use(remarkDocx.default, {
+          output: 'blob',
+          title: note.title || 'Exported Note',
+        });
+
+      const result = await processor.process(markdown);
+      // remark-docx returns ArrayBuffer, need to wrap in Blob
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const arrayBuffer = await (result.result as any) as ArrayBuffer;
+      const blob = new Blob([arrayBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+
+      // Download
+      const url = URL.createObjectURL(blob);
+      const filename = `${note.title || 'note'}.docx`;
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success('Word 文档导出成功');
+    } catch (error) {
+      console.error('Export DOCX error:', error);
+      toast.error('导出 Word 文档失败');
+    }
+
+    setOpen(false);
+  }, [editor, currentNoteId]);
+
   return (
     <DropdownMenu modal={false} onOpenChange={setOpen} open={open} {...props}>
       <DropdownMenuTrigger asChild>
@@ -185,7 +262,7 @@ ${htmlContent}
 
       <DropdownMenuContent
         align="start"
-        className="ignore-click-outside/toolbar flex max-h-[500px] min-w-[180px] flex-col overflow-y-auto"
+        className="ignore-click-outside/toolbar flex max-h-125 min-w-45 flex-col overflow-y-auto"
       >
         <DropdownMenuGroup>
           <DropdownMenuItem onSelect={handleExportMarkdown}>
@@ -195,6 +272,10 @@ ${htmlContent}
           <DropdownMenuItem onSelect={handleExportHTML}>
             <FileCodeIcon />
             导出为 HTML
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={handleExportDocx}>
+            <FileTypeIcon />
+            导出为 Word
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
