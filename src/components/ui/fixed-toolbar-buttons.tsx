@@ -16,6 +16,7 @@ import { useEditorReadOnly } from 'platejs/react';
 
 import { AlignToolbarButton } from './align-toolbar-button';
 import { EmojiToolbarButton } from './emoji-toolbar-button';
+import { ExportToolbarButton } from './export-toolbar-button';
 import { FontColorToolbarButton } from './font-color-toolbar-button';
 import { FontSizeToolbarButton } from './font-size-toolbar-button';
 import { RedoToolbarButton, UndoToolbarButton } from './history-toolbar-button';
@@ -85,6 +86,10 @@ export function FixedToolbarButtons() {
             <LineHeightToolbarButton />
             <OutdentToolbarButton />
             <IndentToolbarButton />
+          </ToolbarGroup>
+
+          <ToolbarGroup>
+            <ExportToolbarButton />
           </ToolbarGroup>
 
           <ToolbarGroup>
