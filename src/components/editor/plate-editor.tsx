@@ -68,6 +68,7 @@ export function PlateEditor() {
     isLoadingContent,
     setSaveStatus,
     setCurrentContent,
+    setMarkdownSerializer,
   } = useEditorStore();
 
   const baselineContentRef = useRef<Value | null>(null);
@@ -141,6 +142,15 @@ export function PlateEditor() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saveStatus]);
+
+  // Set up markdown serializer
+  useEffect(() => {
+    const serializer = (value: Value) => {
+      return editor.api.markdown.serialize({ value });
+    };
+    setMarkdownSerializer(serializer);
+    return () => setMarkdownSerializer(null);
+  }, [editor, setMarkdownSerializer]);
 
   return (
     <Plate editor={editor} onChange={handleChange}>

@@ -29,6 +29,10 @@ interface EditorState {
   currentContent: Value | null;
   setCurrentContent: (content: Value | null) => void;
 
+  // Markdown serializer callback (set by PlateEditor)
+  markdownSerializer: ((value: Value) => string) | null;
+  setMarkdownSerializer: (serializer: ((value: Value) => string) | null) => void;
+
   // Save status
   saveStatus: SaveStatus;
   setSaveStatus: (status: SaveStatus) => void;
@@ -53,7 +57,7 @@ interface EditorState {
   switchToNote: (noteId: string) => void;
 
   // Manual save
-  saveCurrentNote: () => Promise<boolean>;
+  saveCurrentNote: (markdown?: string) => Promise<boolean>;
 
   // Cache management
   invalidateCache: (id: string) => void;
@@ -93,6 +97,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   currentContent: null,
   setCurrentContent: (content) => set({ currentContent: content }),
+
+  markdownSerializer: null,
+  setMarkdownSerializer: (serializer) => set({ markdownSerializer: serializer }),
 
   saveStatus: 'saved',
   setSaveStatus: (status) => set({ saveStatus: status }),
@@ -194,8 +201,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ currentNoteId: noteId });
   },
 
-  saveCurrentNote: async () => {
-    const { currentNoteId, currentContent, contentCache } = get();
+  saveCurrentNote: async (markdown?: string) => {
+    const { currentNoteId, currentContent, contentCache, markdownSerializer } = get();
     if (!currentNoteId || !currentContent) return false;
 
     set({ saveStatus: 'saving' });
@@ -229,10 +236,23 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         ? `/api/diaries/${currentNoteId}`
         : `/api/notes/${currentNoteId}`;
 
+      const body: Record<string, unknown> = { content, wordCount };
+
+      // Generate markdown if not provided and serializer is available
+      if (markdown !== undefined) {
+        body.markdown = markdown;
+      } else if (markdownSerializer) {
+        try {
+          body.markdown = markdownSerializer(currentContent);
+        } catch (e) {
+          console.error('Failed to serialize markdown:', e);
+        }
+      }
+
       const res = await fetch(apiPath, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, wordCount }),
+        body: JSON.stringify(body),
       });
 
       if (res.ok) {
