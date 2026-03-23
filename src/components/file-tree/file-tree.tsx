@@ -130,7 +130,7 @@ export function FileTree() {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-3 py-2">
+      <div className="flex h-[41px] items-center justify-between border-b border-border px-5">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">文件</span>
         <div className="flex items-center gap-1">
           <button

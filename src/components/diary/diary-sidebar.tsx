@@ -65,7 +65,7 @@ export function DiarySidebar() {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-3 py-2">
+      <div className="flex h-[41px] items-center justify-between border-b border-border px-3">
         <div className="flex items-center gap-1.5">
           <CalendarDays className="h-4 w-4 text-muted-foreground" />
           <span className="text-xs font-medium text-foreground">日记</span>
@@ -73,7 +73,7 @@ export function DiarySidebar() {
       </div>
 
       {/* Year selector */}
-      <div className="flex items-center justify-center gap-2 border-b border-border px-3 py-2">
+      <div className="flex h-[41px] items-center justify-center gap-2 border-b border-border px-3">
         <button
           onClick={prevYear}
           className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"

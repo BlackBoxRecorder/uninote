@@ -5,7 +5,6 @@
 - [src/app/api/notes/route.ts](file://src/app/api/notes/route.ts)
 - [src/app/api/notes/[id]/route.ts](file://src/app/api/notes/[id]/route.ts)
 - [src/app/api/notes/search/route.ts](file://src/app/api/notes/search/route.ts)
-- [src/app/api/notes/[id]/download/route.ts](file://src/app/api/notes/[id]/download/route.ts)
 - [src/app/api/notes/[id]/upload-to-lark/route.ts](file://src/app/api/notes/[id]/upload-to-lark/route.ts)
 - [src/db/schema.ts](file://src/db/schema.ts)
 - [src/lib/lark.ts](file://src/lib/lark.ts)
@@ -15,6 +14,13 @@
 - [src/stores/app-store.ts](file://src/stores/app-store.ts)
 - [package.json](file://package.json)
 </cite>
+
+## 更新摘要
+**所做更改**
+- 移除了下载功能相关的文档内容和API说明
+- 更新了架构图以反映下载功能的移除
+- 更新了故障排查指南中关于下载功能的相关说明
+- 更新了API定义与参数说明，移除了下载接口
 
 ## 目录
 1. [简介](#简介)
@@ -29,10 +35,9 @@
 10. [附录](#附录)
 
 ## 简介
-本文件为“笔记 API”的完整技术文档，覆盖以下能力与范围：
+本文件为"笔记 API"的完整技术文档，覆盖以下能力与范围：
 - 笔记的 CRUD 接口：创建、读取、更新、删除
 - 笔记搜索接口：查询参数与过滤选项
-- 笔记下载接口：文件格式与传输协议
 - 上传到飞书接口：同步机制与冲突处理策略
 - 数据模型与元数据：字段定义、版本控制与一致性
 - 批量操作与分页查询：实现建议
@@ -53,7 +58,6 @@ end
 subgraph "后端 API"
 NotesAPI["笔记 API<br/>GET/POST/PUT/DELETE"]
 SearchAPI["搜索 API<br/>GET /notes/search?q=..."]
-DownloadAPI["下载 API<br/>GET /notes/[id]/download"]
 LarkUploadAPI["上传到飞书<br/>POST /notes/[id]/upload-to-lark"]
 LarkWebhook["飞书 Webhook<br/>POST /webhook/lark"]
 end
@@ -64,41 +68,37 @@ MarkdownSer["服务端 Markdown 序列化"]
 end
 FE --> NotesAPI
 FE --> SearchAPI
-FE --> DownloadAPI
 FE --> LarkUploadAPI
 LarkWebhook --> LarkSDK
 NotesAPI --> DB
 SearchAPI --> DB
-DownloadAPI --> DB
 LarkUploadAPI --> DB
 LarkUploadAPI --> MarkdownSer
 LarkUploadAPI --> LarkSDK
 ```
 
-图表来源
+**图表来源**
 - [src/app/api/notes/route.ts:1-86](file://src/app/api/notes/route.ts#L1-L86)
 - [src/app/api/notes/[id]/route.ts](file://src/app/api/notes/[id]/route.ts#L1-L104)
 - [src/app/api/notes/search/route.ts:1-44](file://src/app/api/notes/search/route.ts#L1-L44)
-- [src/app/api/notes/[id]/download/route.ts](file://src/app/api/notes/[id]/download/route.ts#L1-L33)
-- [src/app/api/notes/[id]/upload-to-lark/route.ts](file://src/app/api/notes/[id]/upload-to-lark/route.ts#L1-L186)
+- [src/app/api/notes/[id]/upload-to-lark/route.ts](file://src/app/api/notes/[id]/upload-to-lark/route.ts#L1-L327)
 - [src/app/api/webhook/lark/route.ts:1-106](file://src/app/api/webhook/lark/route.ts#L1-L106)
 - [src/db/schema.ts:27-39](file://src/db/schema.ts#L27-L39)
 - [src/lib/lark.ts:1-96](file://src/lib/lark.ts#L1-L96)
 - [src/lib/server-markdown.ts:1-138](file://src/lib/server-markdown.ts#L1-L138)
 
-章节来源
+**章节来源**
 - [src/app/api/notes/route.ts:1-86](file://src/app/api/notes/route.ts#L1-L86)
 - [src/app/api/notes/[id]/route.ts](file://src/app/api/notes/[id]/route.ts#L1-L104)
 - [src/app/api/notes/search/route.ts:1-44](file://src/app/api/notes/search/route.ts#L1-L44)
-- [src/app/api/notes/[id]/download/route.ts](file://src/app/api/notes/[id]/download/route.ts#L1-L33)
-- [src/app/api/notes/[id]/upload-to-lark/route.ts](file://src/app/api/notes/[id]/upload-to-lark/route.ts#L1-L186)
+- [src/app/api/notes/[id]/upload-to-lark/route.ts](file://src/app/api/notes/[id]/upload-to-lark/route.ts#L1-L327)
 - [src/db/schema.ts:27-39](file://src/db/schema.ts#L27-L39)
 
 ## 核心组件
 - 笔记表结构与字段
   - 主键：id
   - 关联：folderId 引用 folders.id（级联删除设为 set null）
-  - 标题：title，默认“Untitled”
+  - 标题：title，默认"Untitled"
   - 内容：content（Plate JSON）、markdown（导出/同步）
   - 统计：wordCount
   - 排序：sortOrder
@@ -108,20 +108,17 @@ LarkUploadAPI --> LarkSDK
   - 默认按 sortOrder、createdAt 升序
 - 搜索
   - 支持 q 关键词，模糊匹配 title、content、markdown
-- 下载
-  - 返回 text/markdown，文件名基于标题，自动转义非法字符
 - 上传到飞书
   - 依赖 LARK_APP_ID/LARK_APP_SECRET
   - 可选 LARK_FOLDER_TOKEN 指定目标云盘目录
   - 优先使用存储的 markdown，其次序列化 content，最后回退标题
   - 使用 tenant_access_token 上传为 .md 文件
 
-章节来源
+**章节来源**
 - [src/db/schema.ts:27-39](file://src/db/schema.ts#L27-L39)
 - [src/app/api/notes/route.ts:10-40](file://src/app/api/notes/route.ts#L10-L40)
 - [src/app/api/notes/search/route.ts:6-43](file://src/app/api/notes/search/route.ts#L6-L43)
-- [src/app/api/notes/[id]/download/route.ts](file://src/app/api/notes/[id]/download/route.ts#L6-L32)
-- [src/app/api/notes/[id]/upload-to-lark/route.ts](file://src/app/api/notes/[id]/upload-to-lark/route.ts#L116-L186)
+- [src/app/api/notes/[id]/upload-to-lark/route.ts](file://src/app/api/notes/[id]/upload-to-lark/route.ts#L277-L327)
 
 ## 架构总览
 下图展示从客户端到数据库与飞书的调用链路。
@@ -149,10 +146,6 @@ C->>N : "DELETE /notes/[id]"
 N->>D : "删除记录"
 D-->>N : "确认"
 N-->>C : "200 + {success : true}"
-C->>N : "GET /notes/[id]/download"
-N->>D : "读取笔记"
-D-->>N : "笔记内容"
-N-->>C : "200 + text/markdown 响应"
 C->>N : "POST /notes/[id]/upload-to-lark"
 N->>D : "读取笔记"
 N->>M : "序列化 content 或使用 markdown"
@@ -162,13 +155,12 @@ F-->>N : "file_token"
 N-->>C : "200 + {fileToken, fileName}"
 ```
 
-图表来源
+**图表来源**
 - [src/app/api/notes/route.ts:42-85](file://src/app/api/notes/route.ts#L42-L85)
-- [src/app/api/notes/[id]/route.ts](file://src/app/api/notes/[id]/route.ts#L9-L103)
-- [src/app/api/notes/[id]/download/route.ts](file://src/app/api/notes/[id]/download/route.ts#L6-L32)
-- [src/app/api/notes/[id]/upload-to-lark/route.ts](file://src/app/api/notes/[id]/upload-to-lark/route.ts#L116-L186)
-- [src/lib/server-markdown.ts:85-137](file://src/lib/server-markdown.ts#L85-L137)
-- [src/lib/lark.ts:8-27](file://src/lib/lark.ts#L8-L27)
+- [src/app/api/notes/[id]/route.ts](file://src/app/api/notes/[id]/route.ts#L29-L103)
+- [src/app/api/notes/[id]/upload-to-lark/route.ts](file://src/app/api/notes/[id]/upload-to-lark/route.ts#L277-L327)
+- [src/lib/server-markdown.ts:116-137](file://src/lib/server-markdown.ts#L116-L137)
+- [src/lib/lark.ts:102-130](file://src/lib/lark.ts#L102-L130)
 
 ## 详细组件分析
 
@@ -192,10 +184,10 @@ Order --> Exec["执行查询"]
 Exec --> Return["返回笔记列表"]
 ```
 
-图表来源
+**图表来源**
 - [src/app/api/notes/route.ts:10-40](file://src/app/api/notes/route.ts#L10-L40)
 
-章节来源
+**章节来源**
 - [src/app/api/notes/route.ts:10-85](file://src/app/api/notes/route.ts#L10-L85)
 
 ### 笔记详情、更新与删除（GET/PATCH/DELETE）
@@ -219,10 +211,10 @@ BuildU --> Save["写入数据库"]
 Save --> Reload["重新读取并返回"]
 ```
 
-图表来源
+**图表来源**
 - [src/app/api/notes/[id]/route.ts](file://src/app/api/notes/[id]/route.ts#L29-L82)
 
-章节来源
+**章节来源**
 - [src/app/api/notes/[id]/route.ts](file://src/app/api/notes/[id]/route.ts#L9-L103)
 
 ### 搜索接口（GET /notes/search）
@@ -240,33 +232,11 @@ Like --> Exec["执行查询"]
 Exec --> Ret["返回 { notes }"]
 ```
 
-图表来源
+**图表来源**
 - [src/app/api/notes/search/route.ts:6-43](file://src/app/api/notes/search/route.ts#L6-L43)
 
-章节来源
+**章节来源**
 - [src/app/api/notes/search/route.ts:6-43](file://src/app/api/notes/search/route.ts#L6-L43)
-
-### 下载接口（GET /notes/[id]/download）
-- 读取笔记，若无 markdown 则以标题生成默认内容
-- Content-Type: text/markdown; charset=utf-8
-- Content-Disposition: attachment，文件名为标题（非法字符替换为下划线）
-
-```mermaid
-sequenceDiagram
-participant C as "客户端"
-participant DL as "下载 API"
-participant DB as "数据库"
-C->>DL : "GET /notes/[id]/download"
-DL->>DB : "读取笔记"
-DB-->>DL : "笔记"
-DL-->>C : "200 + text/markdown 响应"
-```
-
-图表来源
-- [src/app/api/notes/[id]/download/route.ts](file://src/app/api/notes/[id]/download/route.ts#L6-L32)
-
-章节来源
-- [src/app/api/notes/[id]/download/route.ts](file://src/app/api/notes/[id]/download/route.ts#L6-L32)
 
 ### 上传到飞书（POST /notes/[id]/upload-to-lark）
 - 前置检查：是否配置 LARK_APP_ID/LARK_APP_SECRET
@@ -295,15 +265,15 @@ FS-->>U : "file_token"
 U-->>C : "200 + {fileToken, fileName}"
 ```
 
-图表来源
-- [src/app/api/notes/[id]/upload-to-lark/route.ts](file://src/app/api/notes/[id]/upload-to-lark/route.ts#L116-L186)
+**图表来源**
+- [src/app/api/notes/[id]/upload-to-lark/route.ts](file://src/app/api/notes/[id]/upload-to-lark/route.ts#L277-L327)
 - [src/lib/server-markdown.ts:116-137](file://src/lib/server-markdown.ts#L116-L137)
-- [src/lib/lark.ts:25-45](file://src/lib/lark.ts#L25-L45)
+- [src/lib/lark.ts:102-130](file://src/lib/lark.ts#L102-L130)
 
-章节来源
-- [src/app/api/notes/[id]/upload-to-lark/route.ts](file://src/app/api/notes/[id]/upload-to-lark/route.ts#L116-L186)
+**章节来源**
+- [src/app/api/notes/[id]/upload-to-lark/route.ts](file://src/app/api/notes/[id]/upload-to-lark/route.ts#L277-L327)
 - [src/lib/server-markdown.ts:116-137](file://src/lib/server-markdown.ts#L116-L137)
-- [src/lib/lark.ts:25-45](file://src/lib/lark.ts#L25-L45)
+- [src/lib/lark.ts:102-130](file://src/lib/lark.ts#L102-L130)
 
 ### 飞书 Webhook 与事件处理
 - Webhook 路由
@@ -331,11 +301,11 @@ Type -- 其他 --> Ok
 MsgType -- 非text --> Ok
 ```
 
-图表来源
+**图表来源**
 - [src/app/api/webhook/lark/route.ts:28-105](file://src/app/api/webhook/lark/route.ts#L28-L105)
 - [src/lib/lark-event-handler.ts:104-125](file://src/lib/lark-event-handler.ts#L104-L125)
 
-章节来源
+**章节来源**
 - [src/app/api/webhook/lark/route.ts:28-105](file://src/app/api/webhook/lark/route.ts#L28-L105)
 - [src/lib/lark-event-handler.ts:28-98](file://src/lib/lark-event-handler.ts#L28-L98)
 
@@ -369,10 +339,10 @@ text id PK
 NOTES }o--|| FOLDERS : "folder_id -> folders.id (ON DELETE SET NULL)"
 ```
 
-图表来源
+**图表来源**
 - [src/db/schema.ts:27-39](file://src/db/schema.ts#L27-L39)
 
-章节来源
+**章节来源**
 - [src/db/schema.ts:27-39](file://src/db/schema.ts#L27-L39)
 - [package.json:16-16](file://package.json#L16-L16)
 
@@ -401,13 +371,13 @@ NOTES }o--|| FOLDERS : "folder_id -> folders.id (ON DELETE SET NULL)"
   - 确认验证令牌一致、事件类型为 im.message.receive_v1、消息类型为 text
   - 加密消息需配置解密密钥或关闭加密
 
-章节来源
+**章节来源**
 - [src/app/api/notes/[id]/route.ts](file://src/app/api/notes/[id]/route.ts#L18-L41)
-- [src/app/api/notes/[id]/upload-to-lark/route.ts](file://src/app/api/notes/[id]/upload-to-lark/route.ts#L121-L126)
+- [src/app/api/notes/[id]/upload-to-lark/route.ts](file://src/app/api/notes/[id]/upload-to-lark/route.ts#L242-L247)
 - [src/app/api/webhook/lark/route.ts:32-105](file://src/app/api/webhook/lark/route.ts#L32-L105)
 
 ## 结论
-本笔记 API 提供了完整的 CRUD、搜索、下载与飞书同步能力，数据模型清晰、接口语义明确。建议在生产环境中补充：
+本笔记 API 提供了完整的 CRUD、搜索与飞书同步能力，数据模型清晰、接口语义明确。建议在生产环境中补充：
 - 分页查询与全文检索
 - 上传任务异步化与断点续传
 - Webhook/WS 的幂等与重试策略
@@ -425,34 +395,31 @@ NOTES }o--|| FOLDERS : "folder_id -> folders.id (ON DELETE SET NULL)"
   - DELETE /api/notes/[id]
 - 搜索
   - GET /api/notes/search?q=...
-- 下载
-  - GET /api/notes/[id]/download
 - 上传到飞书
   - POST /api/notes/[id]/upload-to-lark
 
-章节来源
+**章节来源**
 - [src/app/api/notes/route.ts:10-85](file://src/app/api/notes/route.ts#L10-L85)
 - [src/app/api/notes/[id]/route.ts](file://src/app/api/notes/[id]/route.ts#L9-L103)
 - [src/app/api/notes/search/route.ts:6-43](file://src/app/api/notes/search/route.ts#L6-L43)
-- [src/app/api/notes/[id]/download/route.ts](file://src/app/api/notes/[id]/download/route.ts#L6-L32)
-- [src/app/api/notes/[id]/upload-to-lark/route.ts](file://src/app/api/notes/[id]/upload-to-lark/route.ts#L116-L186)
+- [src/app/api/notes/[id]/upload-to-lark/route.ts](file://src/app/api/notes/[id]/upload-to-lark/route.ts#L277-L327)
 
 ### 数据模型字段说明
 - notes
   - id：主键
   - folderId：外键，指向 folders.id（删除时置空）
-  - title：标题，默认“Untitled”
+  - title：标题，默认"Untitled"
   - content：编辑器内容（Plate JSON）
   - markdown：导出/同步用 Markdown 文本
   - wordCount：字数统计
   - sortOrder：排序权重
   - createdAt/updatedAt：时间戳
 
-章节来源
+**章节来源**
 - [src/db/schema.ts:27-39](file://src/db/schema.ts#L27-L39)
 
 ### 版本控制与一致性
-- 无显式版本号字段，通过 updatedAt 与客户端缓存实现“最后修改时间”语义
+- 无显式版本号字段，通过 updatedAt 与客户端缓存实现"最后修改时间"语义
 - 建议引入版本号与冲突解决策略（如 MVCC 或增量合并）
 
 ### 批量操作与分页查询实现建议
@@ -471,12 +438,12 @@ NOTES }o--|| FOLDERS : "folder_id -> folders.id (ON DELETE SET NULL)"
   - 当前实现未检测重复文件，建议在上传前查询同名文件并进行覆盖/重命名策略
   - 可结合 file_token 与云端文件元信息做去重
 
-章节来源
-- [src/app/api/notes/[id]/upload-to-lark/route.ts](file://src/app/api/notes/[id]/upload-to-lark/route.ts#L145-L169)
+**章节来源**
+- [src/app/api/notes/[id]/upload-to-lark/route.ts](file://src/app/api/notes/[id]/upload-to-lark/route.ts#L277-L327)
 - [src/lib/server-markdown.ts:116-137](file://src/lib/server-markdown.ts#L116-L137)
 
 ### 前端调用参考
 - Zustand 中对笔记的创建、重命名与删除均通过 fetch 调用对应 API，包含错误处理与 UI 回滚逻辑
 
-章节来源
+**章节来源**
 - [src/stores/app-store.ts:263-317](file://src/stores/app-store.ts#L263-L317)

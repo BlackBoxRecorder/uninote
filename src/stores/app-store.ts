@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import type { Folder, NoteMeta, AppTab } from '@/types';
 import { useEditorStore } from './editor-store';
+import { useDiaryStore } from './diary-store';
+import { getTodayStr } from '@/lib/diary-utils';
 
 interface AppState {
   // Tab
@@ -48,7 +50,61 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set, get) => ({
   activeTab: 'diary',
-  setActiveTab: (tab) => set({ activeTab: tab }),
+  setActiveTab: (tab) => {
+    const prevTab = get().activeTab;
+    if (prevTab === tab) return;
+
+    // Save current content before switching
+    const editorStore = useEditorStore.getState();
+    if (editorStore.saveStatus === 'unsaved' && editorStore.currentNoteId) {
+      editorStore.saveCurrentNote();
+    }
+
+    set({ activeTab: tab });
+
+    // Load content for the new tab
+    if (tab === 'diary') {
+      // Switch to diary: open today's diary
+      const diaryStore = useDiaryStore.getState();
+      const today = getTodayStr();
+      diaryStore.openDiary('daily', today);
+    } else if (tab === 'notes') {
+      // Switch to notes: load previously selected note or first root note
+      const { selectedNoteId, notes, folders } = get();
+      const editorStore = useEditorStore.getState();
+
+      if (selectedNoteId) {
+        // Load previously selected note
+        editorStore.setEditingType('note');
+        editorStore.loadNote(selectedNoteId);
+        editorStore.switchToNote(selectedNoteId);
+      } else {
+        // Find first root note (no folder)
+        const rootNotes = notes.filter((n) => n.folderId === null);
+        if (rootNotes.length > 0) {
+          const firstNote = rootNotes[0];
+          set({ selectedNoteId: firstNote.id });
+          editorStore.setEditingType('note');
+          editorStore.loadNote(firstNote.id);
+          editorStore.switchToNote(firstNote.id);
+        } else {
+          // Find first note in first non-archived folder
+          const rootFolders = folders.filter((f) => f.parentId === null && !f.isArchived);
+          for (const folder of rootFolders) {
+            const folderNotes = notes.filter((n) => n.folderId === folder.id);
+            if (folderNotes.length > 0) {
+              const firstNote = folderNotes[0];
+              set({ selectedNoteId: firstNote.id });
+              editorStore.setEditingType('note');
+              editorStore.loadNote(firstNote.id);
+              editorStore.switchToNote(firstNote.id);
+              break;
+            }
+          }
+        }
+      }
+    }
+  },
 
   folders: [],
   notes: [],
