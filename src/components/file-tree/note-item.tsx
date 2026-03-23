@@ -89,10 +89,6 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
     setRenaming(false);
   };
 
-  const handleDownload = () => {
-    window.location.href = `/api/notes/${note.id}/download`;
-  };
-
   const handleDelete = async () => {
     await deleteNote(note.id);
   };
@@ -172,12 +168,6 @@ export function NoteItem({ note, depth = 0 }: NoteItemProps) {
             }}
           >
             重命名
-          </ContextMenu.Item>
-          <ContextMenu.Item
-            className="flex cursor-pointer items-center rounded-md px-3 py-1.5 text-sm text-popover-foreground outline-none hover:bg-accent transition-colors"
-            onSelect={handleDownload}
-          >
-            下载为 Markdown
           </ContextMenu.Item>
           <ContextMenu.Item
             className="flex cursor-pointer items-center rounded-md px-3 py-1.5 text-sm text-popover-foreground outline-none hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
