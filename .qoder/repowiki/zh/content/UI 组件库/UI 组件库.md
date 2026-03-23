@@ -9,15 +9,19 @@
 - [src/lib/utils.ts](file://src/lib/utils.ts)
 - [src/components/ui/button.tsx](file://src/components/ui/button.tsx)
 - [src/components/ui/input.tsx](file://src/components/ui/input.tsx)
-- [src/components/ui/select.tsx](file://src/components/ui/select.tsx)
 - [src/components/ui/dialog.tsx](file://src/components/ui/dialog.tsx)
 - [src/components/ui/popover.tsx](file://src/components/ui/popover.tsx)
 - [src/components/ui/calendar.tsx](file://src/components/ui/calendar.tsx)
 - [src/components/ui/checkbox.tsx](file://src/components/ui/checkbox.tsx)
 - [src/components/ui/tooltip.tsx](file://src/components/ui/tooltip.tsx)
-- [src/components/ui/avatar.tsx](file://src/components/ui/avatar.tsx)
-- [src/components/ui/skeleton.tsx](file://src/components/ui/skeleton.tsx)
 </cite>
+
+## 更新摘要
+**所做更改**
+- 移除了头像（Avatar）、选择器（Select）、骨架屏（Skeleton）等组件的相关内容
+- 更新了项目结构图以反映当前可用的组件集合
+- 删除了与已移除组件相关的详细分析章节
+- 更新了依赖分析以排除不再使用的包
 
 ## 目录
 1. [简介](#简介)
@@ -37,86 +41,70 @@
 ## 项目结构
 组件库位于 src/components/ui 下，每个组件封装了 Radix UI 原子能力并提供一致的外观与行为。样式系统通过工具函数合并类名，Tailwind v4 通过 PostCSS 插件启用，配置由组件库工具链生成的 schema 文件进行约束。
 
+**更新** 移除了已删除的 Avatar、Select、Skeleton 等组件的结构图表示
+
 ```mermaid
 graph TB
 subgraph "应用层"
 APP["页面与布局"]
-end
+END
 subgraph "组件库"
 BTN["按钮 Button"]
 INP["输入框 Input"]
-SEL["选择器 Select"]
 DIA["对话框 Dialog"]
 POP["弹出层 Popover"]
 CAL["日历 Calendar"]
 CHK["复选框 Checkbox"]
 TIP["提示 Tooltip"]
-AVA["头像 Avatar"]
-SKL["骨架屏 Skeleton"]
-end
+END
 subgraph "基础库"
 RDX["Radix UI 原子组件"]
 TW["Tailwind CSS"]
 CN["class-variance-authority"]
 UTL["工具函数 cn(...)"]
-end
+END
 APP --> BTN
 APP --> INP
-APP --> SEL
 APP --> DIA
 APP --> POP
 APP --> CAL
 APP --> CHK
 APP --> TIP
-APP --> AVA
-APP --> SKL
 BTN --> RDX
 INP --> RDX
-SEL --> RDX
 DIA --> RDX
 POP --> RDX
 CAL --> RDX
 CHK --> RDX
 TIP --> RDX
-AVA --> RDX
-SKL --> RDX
 BTN --> TW
 INP --> TW
-SEL --> TW
 DIA --> TW
 POP --> TW
 CAL --> TW
 CHK --> TW
 TIP --> TW
-AVA --> TW
-SKL --> TW
 BTN --> CN
 BTN --> UTL
 INP --> UTL
-SEL --> UTL
 DIA --> UTL
 POP --> UTL
 CAL --> UTL
 CHK --> UTL
 TIP --> UTL
-AVA --> UTL
-SKL --> UTL
 ```
 
-图表来源
+**图表来源**
 - [src/components/ui/button.tsx:1-65](file://src/components/ui/button.tsx#L1-L65)
 - [src/components/ui/input.tsx:1-22](file://src/components/ui/input.tsx#L1-L22)
-- [src/components/ui/select.tsx:1-191](file://src/components/ui/select.tsx#L1-L191)
 - [src/components/ui/dialog.tsx:1-158](file://src/components/ui/dialog.tsx#L1-L158)
 - [src/components/ui/popover.tsx:1-90](file://src/components/ui/popover.tsx#L1-L90)
 - [src/components/ui/calendar.tsx:1-220](file://src/components/ui/calendar.tsx#L1-L220)
 - [src/components/ui/checkbox.tsx:1-33](file://src/components/ui/checkbox.tsx#L1-L33)
 - [src/components/ui/tooltip.tsx:1-58](file://src/components/ui/tooltip.tsx#L1-L58)
-- [src/components/ui/avatar.tsx:1-110](file://src/components/ui/avatar.tsx#L1-L110)
-- [src/components/ui/skeleton.tsx:1-14](file://src/components/ui/skeleton.tsx#L1-L14)
 - [src/lib/utils.ts:1-7](file://src/lib/utils.ts#L1-L7)
 
-章节来源
+**章节来源**
 - [README.md:1-37](file://README.md#L1-L37)
 - [package.json:1-119](file://package.json#L1-L119)
 - [components.json:1-21](file://components.json#L1-L21)
@@ -126,29 +114,25 @@ SKL --> UTL
 本节概述组件库的关键构件及其职责：
 - 按钮 Button：提供多种变体与尺寸，支持 asChild 渲染，统一聚焦态与禁用态视觉。
 - 输入框 Input：统一边框、内阴影、聚焦环与无效态样式，适配暗色模式。
-- 选择器 Select：封装触发器、内容区、滚动按钮与条目，支持多尺寸与对齐。
 - 对话框 Dialog：根容器、触发器、覆盖层、内容区、标题与描述，支持关闭按钮与脚部布局。
 - 弹出层 Popover：根容器、触发器、内容区、锚点与标题/描述区块。
 - 日历 Calendar：基于 react-day-picker，统一样式类名、按钮变体与日期按钮渲染。
 - 复选框 Checkbox：原生交互语义，统一指示器与无效态。
 - 提示 Tooltip：提供器、触发器、内容区与箭头。
-- 头像 Avatar：支持多尺寸、图片与占位、徽标与分组计数。
-- 骨架屏 Skeleton：统一脉动动画与背景色。
 
-章节来源
+**更新** 移除了已删除的 Avatar、Select、Skeleton 组件的描述
+
+**章节来源**
 - [src/components/ui/button.tsx:1-65](file://src/components/ui/button.tsx#L1-L65)
 - [src/components/ui/input.tsx:1-22](file://src/components/ui/input.tsx#L1-L22)
-- [src/components/ui/select.tsx:1-191](file://src/components/ui/select.tsx#L1-L191)
 - [src/components/ui/dialog.tsx:1-158](file://src/components/ui/dialog.tsx#L1-L158)
 - [src/components/ui/popover.tsx:1-90](file://src/components/ui/popover.tsx#L1-L90)
 - [src/components/ui/calendar.tsx:1-220](file://src/components/ui/calendar.tsx#L1-L220)
 - [src/components/ui/checkbox.tsx:1-33](file://src/components/ui/checkbox.tsx#L1-L33)
 - [src/components/ui/tooltip.tsx:1-58](file://src/components/ui/tooltip.tsx#L1-L58)
-- [src/components/ui/avatar.tsx:1-110](file://src/components/ui/avatar.tsx#L1-L110)
-- [src/components/ui/skeleton.tsx:1-14](file://src/components/ui/skeleton.tsx#L1-L14)
 
 ## 架构总览
-组件库遵循“原子组件 + 变体系统 + 工具函数”的架构：
+组件库遵循"原子组件 + 变体系统 + 工具函数"的架构：
 - 原子组件：基于 Radix UI，封装交互状态与可见性。
 - 变体系统：class-variance-authority 定义 variant/size 组合，Button 为例展示。
 - 工具函数：cn(...) 合并与去重类名，确保样式优先级与可维护性。
@@ -161,21 +145,21 @@ UTL["工具函数 cn(...)"]
 CN["class-variance-authority"]
 BTN["Button 组件"]
 INP["Input 组件"]
-SEL["Select 组件"]
+DIA["Dialog 组件"]
 UTL --> BTN
 UTL --> INP
-UTL --> SEL
+UTL --> DIA
 CN --> BTN
 BTN --> |"渲染"| RADIX["Radix UI 原子组件"]
 INP --> RADIX
-SEL --> RADIX
+DIA --> RADIX
 ```
 
-图表来源
+**图表来源**
 - [src/lib/utils.ts:1-7](file://src/lib/utils.ts#L1-L7)
 - [src/components/ui/button.tsx:1-65](file://src/components/ui/button.tsx#L1-L65)
 - [src/components/ui/input.tsx:1-22](file://src/components/ui/input.tsx#L1-L22)
-- [src/components/ui/select.tsx:1-191](file://src/components/ui/select.tsx#L1-L191)
+- [src/components/ui/dialog.tsx:1-158](file://src/components/ui/dialog.tsx#L1-L158)
 
 ## 详细组件分析
 
@@ -214,10 +198,10 @@ class Variants {
 Button --> Variants : "使用变体系统"
 ```
 
-图表来源
+**图表来源**
 - [src/components/ui/button.tsx:1-65](file://src/components/ui/button.tsx#L1-L65)
 
-章节来源
+**章节来源**
 - [src/components/ui/button.tsx:1-65](file://src/components/ui/button.tsx#L1-L65)
 
 ### 输入框 Input
@@ -248,51 +232,11 @@ AddInvalid --> Continue
 Continue --> End(["完成"])
 ```
 
-图表来源
+**图表来源**
 - [src/components/ui/input.tsx:1-22](file://src/components/ui/input.tsx#L1-L22)
 
-章节来源
+**章节来源**
 - [src/components/ui/input.tsx:1-22](file://src/components/ui/input.tsx#L1-L22)
-
-### 选择器 Select
-- 设计原则
-  - 触发器支持两种尺寸，内容区支持 popper 与 item-aligned 两种定位策略。
-  - 条目包含指示器与文本，支持分组、分隔线与滚动按钮。
-- Props 接口
-  - Trigger: size
-  - Content: position, align
-  - Item: 文本与指示器
-  - ScrollUp/Down Button: 自定义图标
-- 事件与状态
-  - 通过 Radix UI 的 Root/Trigger/Content/Item 等组件协作，状态通过 data-* 属性暴露。
-- 样式与主题
-  - 使用 cn(...) 合并基础类与动画类，支持暗色模式与尺寸映射。
-- 可访问性
-  - 保持键盘导航与焦点管理，支持滚动与对齐。
-- 使用示例与最佳实践
-  - 长列表场景建议使用 viewport 与滚动按钮提升体验。
-  - 与表单联动时，使用 SelectValue 读取当前值。
-
-```mermaid
-sequenceDiagram
-participant U as "用户"
-participant T as "SelectTrigger"
-participant C as "SelectContent"
-participant V as "Viewport"
-participant I as "SelectItem"
-U->>T : 点击触发器
-T->>C : 打开内容区
-C->>V : 渲染选项视口
-U->>I : 选择某一项
-I-->>T : 更新选中值
-C-->>U : 关闭并返回焦点
-```
-
-图表来源
-- [src/components/ui/select.tsx:1-191](file://src/components/ui/select.tsx#L1-L191)
-
-章节来源
-- [src/components/ui/select.tsx:1-191](file://src/components/ui/select.tsx#L1-L191)
 
 ### 对话框 Dialog
 - 设计原则
@@ -328,10 +272,10 @@ U->>Cl : 点击关闭
 Cl-->>U : 关闭并返回焦点
 ```
 
-图表来源
+**图表来源**
 - [src/components/ui/dialog.tsx:1-158](file://src/components/ui/dialog.tsx#L1-L158)
 
-章节来源
+**章节来源**
 - [src/components/ui/dialog.tsx:1-158](file://src/components/ui/dialog.tsx#L1-L158)
 
 ### 弹出层 Popover
@@ -357,10 +301,10 @@ Align --> Animate["应用动画类"]
 Animate --> Close["关闭并清理"]
 ```
 
-图表来源
+**图表来源**
 - [src/components/ui/popover.tsx:1-90](file://src/components/ui/popover.tsx#L1-L90)
 
-章节来源
+**章节来源**
 - [src/components/ui/popover.tsx:1-90](file://src/components/ui/popover.tsx#L1-L90)
 
 ### 日历 Calendar
@@ -394,10 +338,10 @@ Btn-->>Cal : 返回选中日期
 Cal-->>U : 回调选中结果
 ```
 
-图表来源
+**图表来源**
 - [src/components/ui/calendar.tsx:1-220](file://src/components/ui/calendar.tsx#L1-L220)
 
-章节来源
+**章节来源**
 - [src/components/ui/calendar.tsx:1-220](file://src/components/ui/calendar.tsx#L1-L220)
 
 ### 复选框 Checkbox
@@ -415,7 +359,7 @@ Cal-->>U : 回调选中结果
 - 使用示例与最佳实践
   - 与表单联动时，使用 aria-invalid 传递状态。
 
-章节来源
+**章节来源**
 - [src/components/ui/checkbox.tsx:1-33](file://src/components/ui/checkbox.tsx#L1-L33)
 
 ### 提示 Tooltip
@@ -433,43 +377,8 @@ Cal-->>U : 回调选中结果
 - 使用示例与最佳实践
   - 简短提示优先，避免长文本。
 
-章节来源
+**章节来源**
 - [src/components/ui/tooltip.tsx:1-58](file://src/components/ui/tooltip.tsx#L1-L58)
-
-### 头像 Avatar
-- 设计原则
-  - 支持多尺寸、图片与占位、徽标与分组计数，适合用户标识与团队展示。
-- Props 接口
-  - Root: size
-  - Image/Fallback/Badge/Group/GroupCount
-- 事件与状态
-  - 通过 data-size 与 data-slot 标记尺寸与部件。
-- 样式与主题
-  - 使用 cn(...) 合并基础类与尺寸类。
-- 可访问性
-  - 保持语义化结构。
-- 使用示例与最佳实践
-  - 分组场景使用 Group 与 GroupCount 统一间距与尺寸。
-
-章节来源
-- [src/components/ui/avatar.tsx:1-110](file://src/components/ui/avatar.tsx#L1-L110)
-
-### 骨架屏 Skeleton
-- 设计原则
-  - 统一脉动动画与背景色，用于加载态占位。
-- Props 接口
-  - className
-- 事件与状态
-  - 无状态组件，仅负责渲染。
-- 样式与主题
-  - 使用 cn(...) 合并基础类。
-- 可访问性
-  - 无交互，不影响可访问性。
-- 使用示例与最佳实践
-  - 与异步数据加载配合，避免闪烁。
-
-章节来源
-- [src/components/ui/skeleton.tsx:1-14](file://src/components/ui/skeleton.tsx#L1-L14)
 
 ## 依赖分析
 - 核心依赖
@@ -483,7 +392,8 @@ Cal-->>U : 回调选中结果
   - Button 与 Calendar 等组件复用 Button 变体系统，形成一致风格。
 - 外部集成
   - react-day-picker：日历组件依赖其类名与组件替换机制。
-  - @udecode/cn：部分组件使用其类名合并能力（Calendar 中有引用）。
+
+**更新** 移除了对已删除组件相关依赖的引用
 
 ```mermaid
 graph TB
@@ -502,15 +412,15 @@ PKG --> CLS
 PKG --> TWP
 ```
 
-图表来源
+**图表来源**
 - [package.json:1-119](file://package.json#L1-L119)
 
-章节来源
+**章节来源**
 - [package.json:1-119](file://package.json#L1-L119)
 
 ## 性能考虑
 - 渲染优化
-  - 使用 Portal（Dialog/Popover/Select）减少层级与重排影响。
+  - 使用 Portal（Dialog/Popover）减少层级与重排影响。
   - 动画通过 data-state 与 radix 动画类实现，避免 JavaScript 动画开销。
 - 样式优化
   - cn(...) 合并类名，减少重复与冲突，提升样式计算效率。
@@ -547,13 +457,13 @@ PKG --> TWP
 - 动画与过渡效果
   - 组件广泛使用 data-state 与 radix 动画类，实现淡入/淡出与缩放过渡。
 - 组件组合模式与布局系统
-  - 组件通过组合（如 DialogHeader/DialogFooter）与容器（如 AvatarGroup）实现常见布局。
+  - 组件通过组合（如 DialogHeader/DialogFooter）与容器实现常见布局。
 - 测试策略与质量保证
   - 建议使用可访问性测试工具（如 axe）验证组件的 ARIA 与键盘交互。
   - 对动画与定位组件进行快照测试，确保跨浏览器一致性。
   - 对表单组件进行集成测试，验证与验证库（如 Zod）的协同。
 
-章节来源
+**章节来源**
 - [components.json:1-21](file://components.json#L1-L21)
 - [postcss.config.mjs:1-8](file://postcss.config.mjs#L1-L8)
 - [src/lib/utils.ts:1-7](file://src/lib/utils.ts#L1-L7)
