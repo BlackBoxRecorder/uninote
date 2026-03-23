@@ -23,7 +23,7 @@ export function IdeasPage() {
   }, [selectedTagId]);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-background">
+    <div className="h-full overflow-y-auto bg-background">
       <div className="mx-auto flex max-w-5xl gap-6 p-6">
         {/* Left column: Composer + Timeline */}
         <div className="flex-1 space-y-4">
