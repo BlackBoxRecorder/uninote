@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import type { Value } from 'platejs';
 import type { SaveStatus } from '@/types';
+import { calculateWordCount } from '@/lib/content-utils';
+import {
+  getCachedContent,
+  setCachedContent,
+  deleteCachedContent,
+  evictOldEntries,
+} from '@/lib/editor-cache';
 
 type EditingType = 'note' | 'diary';
 
@@ -77,10 +84,18 @@ function evictCache(cache: Map<string, CachedContent>) {
 }
 
 function parseContent(raw: string | null | undefined): Value {
-  if (!raw) return [{ type: 'p', children: [{ text: '' }] }];
+  const fallback: Value = [{ type: 'p', children: [{ text: '' }] }];
+  if (!raw) return fallback;
   try {
-    return JSON.parse(raw);
-  } catch {
+    const parsed = JSON.parse(raw);
+    // Validate that parsed value is a valid Plate Value (array of nodes)
+    if (!Array.isArray(parsed)) {
+      console.warn('parseContent: JSON is not an array, falling back to text node');
+      return [{ type: 'p', children: [{ text: raw }] }];
+    }
+    return parsed;
+  } catch (e) {
+    console.warn('parseContent: JSON.parse failed, falling back to text node', e);
     return [{ type: 'p', children: [{ text: raw }] }];
   }
 }
@@ -114,17 +129,41 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   loadNote: async (noteId: string) => {
     const { contentCache } = get();
 
-    // Check cache first
-    const cached = contentCache.get(noteId);
-    if (cached) {
-      cached.timestamp = Date.now();
+    // Check memory cache first (fastest)
+    const memCached = contentCache.get(noteId);
+    if (memCached) {
+      memCached.timestamp = Date.now();
       set({
-        initialContent: cached.content,
+        initialContent: memCached.content,
         currentContent: null,
-        wordCount: cached.wordCount,
+        wordCount: memCached.wordCount,
         saveStatus: 'saved',
       });
       return;
+    }
+
+    // Check IndexedDB cache (persisted across page refreshes)
+    try {
+      const idbCached = await getCachedContent(noteId);
+      if (idbCached) {
+        // Write to memory cache for faster subsequent access
+        contentCache.set(noteId, {
+          content: idbCached.content,
+          wordCount: idbCached.wordCount,
+          timestamp: Date.now(),
+        });
+        evictCache(contentCache);
+        
+        set({
+          initialContent: idbCached.content,
+          currentContent: null,
+          wordCount: idbCached.wordCount,
+          saveStatus: 'saved',
+        });
+        return;
+      }
+    } catch (e) {
+      console.warn('Failed to read from IndexedDB cache:', e);
     }
 
     // Cache miss: fetch from API
@@ -137,9 +176,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const content = parseContent(note.content);
       const wordCount = note.wordCount || 0;
 
-      // Write to cache
+      // Write to memory cache
       contentCache.set(noteId, { content, wordCount, timestamp: Date.now() });
       evictCache(contentCache);
+
+      // Write to IndexedDB cache (async, don't wait)
+      setCachedContent(noteId, content, wordCount)
+        .then(() => evictOldEntries())
+        .catch((e) => console.warn('Failed to write to IndexedDB cache:', e));
 
       set({
         initialContent: content,
@@ -157,17 +201,41 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   loadDiary: async (diaryId: string) => {
     const { contentCache } = get();
 
-    // Check cache first
-    const cached = contentCache.get(diaryId);
-    if (cached) {
-      cached.timestamp = Date.now();
+    // Check memory cache first (fastest)
+    const memCached = contentCache.get(diaryId);
+    if (memCached) {
+      memCached.timestamp = Date.now();
       set({
-        initialContent: cached.content,
+        initialContent: memCached.content,
         currentContent: null,
-        wordCount: cached.wordCount,
+        wordCount: memCached.wordCount,
         saveStatus: 'saved',
       });
       return;
+    }
+
+    // Check IndexedDB cache (persisted across page refreshes)
+    try {
+      const idbCached = await getCachedContent(diaryId);
+      if (idbCached) {
+        // Write to memory cache for faster subsequent access
+        contentCache.set(diaryId, {
+          content: idbCached.content,
+          wordCount: idbCached.wordCount,
+          timestamp: Date.now(),
+        });
+        evictCache(contentCache);
+        
+        set({
+          initialContent: idbCached.content,
+          currentContent: null,
+          wordCount: idbCached.wordCount,
+          saveStatus: 'saved',
+        });
+        return;
+      }
+    } catch (e) {
+      console.warn('Failed to read from IndexedDB cache:', e);
     }
 
     // Cache miss: fetch from API
@@ -180,9 +248,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const content = parseContent(diary.content);
       const wordCount = diary.wordCount || 0;
 
-      // Write to cache
+      // Write to memory cache
       contentCache.set(diaryId, { content, wordCount, timestamp: Date.now() });
       evictCache(contentCache);
+
+      // Write to IndexedDB cache (async, don't wait)
+      setCachedContent(diaryId, content, wordCount)
+        .then(() => evictOldEntries())
+        .catch((e) => console.warn('Failed to write to IndexedDB cache:', e));
 
       set({
         initialContent: content,
@@ -209,27 +282,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
     try {
       const content = JSON.stringify(currentContent);
-
-      // Recursively extract all text from nested nodes
-      const extractText = (nodes: unknown[]): string => {
-        return nodes
-          .map((node) => {
-            if (!node || typeof node !== 'object') return '';
-            const n = node as Record<string, unknown>;
-
-            if (typeof n.text === 'string') return n.text;
-
-            if (Array.isArray(n.children)) {
-              return extractText(n.children);
-            }
-
-            return '';
-          })
-          .join('');
-      };
-
-      const text = extractText(currentContent);
-      const wordCount = text.replace(/\s/g, '').length;
+      const wordCount = calculateWordCount(currentContent);
 
       const { editingType } = get();
       const apiPath = editingType === 'diary'
@@ -256,12 +309,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       });
 
       if (res.ok) {
-        // Update cache with saved content
+        // Update memory cache with saved content
         contentCache.set(currentNoteId, {
           content: currentContent,
           wordCount,
           timestamp: Date.now(),
         });
+        
+        // Update IndexedDB cache (async, don't wait)
+        setCachedContent(currentNoteId, currentContent, wordCount)
+          .catch((e) => console.warn('Failed to update IndexedDB cache:', e));
+        
         set({ saveStatus: 'saved', wordCount });
         return true;
       } else {
@@ -275,6 +333,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   invalidateCache: (id: string) => {
+    // Remove from memory cache
     get().contentCache.delete(id);
+    // Remove from IndexedDB cache (async, don't wait)
+    deleteCachedContent(id)
+      .catch((e) => console.warn('Failed to delete from IndexedDB cache:', e));
   },
 }));

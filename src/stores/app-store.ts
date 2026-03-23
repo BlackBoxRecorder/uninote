@@ -1,13 +1,24 @@
 import { create } from 'zustand';
 import type { Folder, NoteMeta, AppTab } from '@/types';
+import type { TreeResponse, ErrorResponse } from '@/types/api';
 import { useEditorStore } from './editor-store';
 import { useDiaryStore } from './diary-store';
 import { getTodayStr } from '@/lib/diary-utils';
 
+// 解析 API 错误响应
+async function parseErrorResponse(res: Response): Promise<string> {
+  try {
+    const data: ErrorResponse = await res.json();
+    return data.error || '请求失败';
+  } catch {
+    return '请求失败';
+  }
+}
+
 interface AppState {
   // Tab
   activeTab: AppTab;
-  setActiveTab: (tab: AppTab) => void;
+  setActiveTab: (tab: AppTab) => Promise<void>;
 
   // File tree
   folders: Folder[];
@@ -28,6 +39,10 @@ interface AppState {
   // Tree loading
   treeLoading: boolean;
   setTreeLoading: (loading: boolean) => void;
+
+  // Error state
+  error: string | null;
+  clearError: () => void;
 
   // Fetch tree data
   fetchTree: () => Promise<void>;
@@ -50,14 +65,14 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set, get) => ({
   activeTab: 'diary',
-  setActiveTab: (tab) => {
+  setActiveTab: async (tab) => {
     const prevTab = get().activeTab;
     if (prevTab === tab) return;
 
-    // Save current content before switching
+    // Save current content before switching (await to prevent race condition)
     const editorStore = useEditorStore.getState();
     if (editorStore.saveStatus === 'unsaved' && editorStore.currentNoteId) {
-      editorStore.saveCurrentNote();
+      await editorStore.saveCurrentNote();
     }
 
     set({ activeTab: tab });
@@ -122,16 +137,23 @@ export const useAppStore = create<AppState>((set, get) => ({
   treeLoading: false,
   setTreeLoading: (loading) => set({ treeLoading: loading }),
 
+  error: null,
+  clearError: () => set({ error: null }),
+
   fetchTree: async () => {
     set({ treeLoading: true });
     try {
       const res = await fetch('/api/tree');
-      if (res.ok) {
-        const data = await res.json();
-        set({ folders: data.folders, notes: data.notes });
+      if (!res.ok) {
+        const errorMsg = await parseErrorResponse(res);
+        throw new Error(errorMsg);
       }
+      const data: TreeResponse = await res.json();
+      set({ folders: data.folders, notes: data.notes, error: null });
     } catch (e) {
-      console.error('Failed to fetch tree:', e);
+      const message = e instanceof Error ? e.message : '获取文件树失败';
+      console.error('Failed to fetch tree:', message);
+      set({ error: message });
     } finally {
       set({ treeLoading: false });
     }
@@ -144,15 +166,19 @@ export const useAppStore = create<AppState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, parentId }),
       });
-      if (res.ok) {
-        const folder = await res.json();
-        set((s) => ({ folders: [...s.folders, folder] }));
-        return folder;
+      if (!res.ok) {
+        const errorMsg = await parseErrorResponse(res);
+        throw new Error(errorMsg);
       }
+      const folder: Folder = await res.json();
+      set((s) => ({ folders: [...s.folders, folder], error: null }));
+      return folder;
     } catch (e) {
-      console.error('Failed to create folder:', e);
+      const message = e instanceof Error ? e.message : '创建文件夹失败';
+      console.error('Failed to create folder:', message);
+      set({ error: message });
+      return null;
     }
-    return null;
   },
 
   renameFolder: async (id, name) => {
@@ -162,27 +188,37 @@ export const useAppStore = create<AppState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
       });
-      if (res.ok) {
-        const updated = await res.json();
-        set((s) => ({
-          folders: s.folders.map((f) => (f.id === id ? updated : f)),
-        }));
+      if (!res.ok) {
+        const errorMsg = await parseErrorResponse(res);
+        throw new Error(errorMsg);
       }
+      const updated: Folder = await res.json();
+      set((s) => ({
+        folders: s.folders.map((f) => (f.id === id ? updated : f)),
+        error: null,
+      }));
     } catch (e) {
-      console.error('Failed to rename folder:', e);
+      const message = e instanceof Error ? e.message : '重命名文件夹失败';
+      console.error('Failed to rename folder:', message);
+      set({ error: message });
     }
   },
 
   deleteFolder: async (id) => {
     try {
       const res = await fetch(`/api/folders/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        // Refresh tree from server to correctly handle cascade deletion
-        // of nested subfolders and note reassignment
-        await get().fetchTree();
+      if (!res.ok) {
+        const errorMsg = await parseErrorResponse(res);
+        throw new Error(errorMsg);
       }
+      // Refresh tree from server to correctly handle cascade deletion
+      // of nested subfolders and note reassignment
+      await get().fetchTree();
+      set({ error: null });
     } catch (e) {
-      console.error('Failed to delete folder:', e);
+      const message = e instanceof Error ? e.message : '删除文件夹失败';
+      console.error('Failed to delete folder:', message);
+      set({ error: message });
     }
   },
 
@@ -323,15 +359,19 @@ export const useAppStore = create<AppState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ folderId, title }),
       });
-      if (res.ok) {
-        const note = await res.json();
-        set((s) => ({ notes: [...s.notes, note] }));
-        return note;
+      if (!res.ok) {
+        const errorMsg = await parseErrorResponse(res);
+        throw new Error(errorMsg);
       }
+      const note: NoteMeta = await res.json();
+      set((s) => ({ notes: [...s.notes, note], error: null }));
+      return note;
     } catch (e) {
-      console.error('Failed to create note:', e);
+      const message = e instanceof Error ? e.message : '创建笔记失败';
+      console.error('Failed to create note:', message);
+      set({ error: message });
+      return null;
     }
-    return null;
   },
 
   renameNote: async (id, title) => {
@@ -341,33 +381,43 @@ export const useAppStore = create<AppState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title }),
       });
-      if (res.ok) {
-        set((s) => ({
-          notes: s.notes.map((n) => (n.id === id ? { ...n, title } : n)),
-        }));
+      if (!res.ok) {
+        const errorMsg = await parseErrorResponse(res);
+        throw new Error(errorMsg);
       }
+      set((s) => ({
+        notes: s.notes.map((n) => (n.id === id ? { ...n, title } : n)),
+        error: null,
+      }));
     } catch (e) {
-      console.error('Failed to rename note:', e);
+      const message = e instanceof Error ? e.message : '重命名笔记失败';
+      console.error('Failed to rename note:', message);
+      set({ error: message });
     }
   },
 
   deleteNote: async (id) => {
     try {
       const res = await fetch(`/api/notes/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        const { selectedNoteId } = get();
-        set((s) => ({
-          notes: s.notes.filter((n) => n.id !== id),
-          selectedNoteId: selectedNoteId === id ? null : selectedNoteId,
-        }));
-        // Clear from editor content cache
-        useEditorStore.getState().invalidateCache(id);
-        if (selectedNoteId === id) {
-          useEditorStore.getState().setCurrentNoteId(null);
-        }
+      if (!res.ok) {
+        const errorMsg = await parseErrorResponse(res);
+        throw new Error(errorMsg);
+      }
+      const { selectedNoteId } = get();
+      set((s) => ({
+        notes: s.notes.filter((n) => n.id !== id),
+        selectedNoteId: selectedNoteId === id ? null : selectedNoteId,
+        error: null,
+      }));
+      // Clear from editor content cache
+      useEditorStore.getState().invalidateCache(id);
+      if (selectedNoteId === id) {
+        useEditorStore.getState().setCurrentNoteId(null);
       }
     } catch (e) {
-      console.error('Failed to delete note:', e);
+      const message = e instanceof Error ? e.message : '删除笔记失败';
+      console.error('Failed to delete note:', message);
+      set({ error: message });
     }
   },
 }));

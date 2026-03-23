@@ -4,6 +4,7 @@ import { getStorage } from "@/lib/storage";
 import { processImage } from "@/lib/image-process";
 import { getDatabase } from "@/db";
 import { fileAttachments } from "@/db/schema";
+import { withErrorHandler, ApiError } from "@/lib/api-utils";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
@@ -47,106 +48,101 @@ const ALLOWED_DOCUMENT_TYPES = [
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 ];
 
-export async function POST(request: NextRequest) {
-  try {
-    const formData = await request.formData();
-    const file = formData.get("file") as File | null;
-    const noteId = formData.get("noteId") as string | null;
+export const POST = withErrorHandler(async (request: NextRequest) => {
+  const formData = await request.formData();
+  const file = formData.get("file") as File | null;
+  const noteId = formData.get("noteId") as string | null;
 
-    if (!file) {
-      return NextResponse.json({ error: "未选择文件" }, { status: 400 });
-    }
-
-    const isImage = ALLOWED_IMAGE_TYPES.includes(file.type);
-    const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type);
-    const isAudio = ALLOWED_AUDIO_TYPES.includes(file.type);
-    const isDocument = ALLOWED_DOCUMENT_TYPES.includes(file.type);
-
-    if (!isImage && !isVideo && !isAudio && !isDocument) {
-      return NextResponse.json({ error: "不支持的文件类型" }, { status: 400 });
-    }
-
-    let maxSize: number;
-    if (isVideo) {
-      maxSize = MAX_VIDEO_SIZE;
-    } else if (isAudio) {
-      maxSize = MAX_AUDIO_SIZE;
-    } else if (isDocument) {
-      maxSize = MAX_DOCUMENT_SIZE;
-    } else {
-      maxSize = MAX_IMAGE_SIZE;
-    }
-    if (file.size > maxSize) {
-      const maxSizeMB = maxSize / (1024 * 1024);
-      return NextResponse.json({ error: `文件大小不能超过 ${maxSizeMB}MB` }, { status: 400 });
-    }
-
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    let data: Buffer;
-    let width: number | undefined;
-    let height: number | undefined;
-    let mimeType: string;
-    let ext: string;
-
-    if (isImage) {
-      const processed = await processImage(buffer);
-      data = processed.data;
-      width = processed.width;
-      height = processed.height;
-      mimeType = "image/webp";
-      ext = "webp";
-    } else {
-      // 视频、音频、文档：直接保存原始文件
-      data = buffer;
-      mimeType = file.type;
-      // 从文件名获取扩展名，如果没有则根据类型推断
-      const fileExt = file.name.split(".").pop()?.toLowerCase();
-      if (fileExt && fileExt.length > 0 && fileExt.length <= 10) {
-        ext = fileExt;
-      } else if (isVideo) {
-        ext = "mp4";
-      } else if (isAudio) {
-        ext = "mp3";
-      } else if (isDocument) {
-        ext = "pdf";
-      } else {
-        ext = "bin";
-      }
-    }
-
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const id = nanoid();
-    const key = `${year}/${month}/${id}.${ext}`;
-
-    const storage = getStorage();
-    const url = await storage.upload(data, key);
-
-    if (noteId) {
-      const db = getDatabase();
-      db.insert(fileAttachments)
-        .values({
-          id,
-          noteId,
-          fileName: file.name,
-          filePath: key,
-          storageType: url.startsWith("/api/files") ? "local" : "cos",
-          cosUrl: url.startsWith("http") ? url : null,
-          mimeType,
-          size: data.length,
-          width,
-          height,
-          createdAt: Date.now(),
-        })
-        .run();
-    }
-
-    return NextResponse.json({ url, id, width, height });
-  } catch (e) {
-    console.error("Upload failed:", e);
-    return NextResponse.json({ error: "上传失败" }, { status: 500 });
+  if (!file) {
+    throw new ApiError(400, "未选择文件");
   }
-}
+
+  const isImage = ALLOWED_IMAGE_TYPES.includes(file.type);
+  const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type);
+  const isAudio = ALLOWED_AUDIO_TYPES.includes(file.type);
+  const isDocument = ALLOWED_DOCUMENT_TYPES.includes(file.type);
+
+  if (!isImage && !isVideo && !isAudio && !isDocument) {
+    throw new ApiError(400, "不支持的文件类型");
+  }
+
+  let maxSize: number;
+  if (isVideo) {
+    maxSize = MAX_VIDEO_SIZE;
+  } else if (isAudio) {
+    maxSize = MAX_AUDIO_SIZE;
+  } else if (isDocument) {
+    maxSize = MAX_DOCUMENT_SIZE;
+  } else {
+    maxSize = MAX_IMAGE_SIZE;
+  }
+  if (file.size > maxSize) {
+    const maxSizeMB = maxSize / (1024 * 1024);
+    throw new ApiError(400, `文件大小不能超过 ${maxSizeMB}MB`);
+  }
+
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  let data: Buffer;
+  let width: number | undefined;
+  let height: number | undefined;
+  let mimeType: string;
+  let ext: string;
+
+  if (isImage) {
+    const processed = await processImage(buffer);
+    data = processed.data;
+    width = processed.width;
+    height = processed.height;
+    mimeType = "image/webp";
+    ext = "webp";
+  } else {
+    // 视频、音频、文档：直接保存原始文件
+    data = buffer;
+    mimeType = file.type;
+    // 从文件名获取扩展名，如果没有则根据类型推断
+    const fileExt = file.name.split(".").pop()?.toLowerCase();
+    if (fileExt && fileExt.length > 0 && fileExt.length <= 10) {
+      ext = fileExt;
+    } else if (isVideo) {
+      ext = "mp4";
+    } else if (isAudio) {
+      ext = "mp3";
+    } else if (isDocument) {
+      ext = "pdf";
+    } else {
+      ext = "bin";
+    }
+  }
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const id = nanoid();
+  const key = `${year}/${month}/${id}.${ext}`;
+
+  const storage = getStorage();
+  const url = await storage.upload(data, key);
+
+  if (noteId) {
+    const db = getDatabase();
+    db.insert(fileAttachments)
+      .values({
+        id,
+        noteId,
+        fileName: file.name,
+        filePath: key,
+        storageType: url.startsWith("/api/files") ? "local" : "cos",
+        cosUrl: url.startsWith("http") ? url : null,
+        mimeType,
+        size: data.length,
+        width,
+        height,
+        createdAt: Date.now(),
+      })
+      .run();
+  }
+
+  return NextResponse.json({ url, id, width, height });
+});

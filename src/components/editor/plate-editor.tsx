@@ -138,10 +138,10 @@ export function PlateEditor() {
   // Update baseline after save
   useEffect(() => {
     if (saveStatus === 'saved' && currentNoteId) {
-      baselineContentRef.current = editor.children as Value;
+      // Deep clone editor.children to avoid reference issues
+      baselineContentRef.current = JSON.parse(JSON.stringify(editor.children)) as Value;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [saveStatus]);
+  }, [saveStatus, currentNoteId, editor]);
 
   // Set up markdown serializer
   useEffect(() => {

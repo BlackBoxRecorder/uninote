@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { DiaryMeta } from '@/types';
+import type { DiariesListResponse, ErrorResponse } from '@/types/api';
 import { useEditorStore } from './editor-store';
 import {
   getTodayStr,
@@ -8,6 +9,16 @@ import {
   getWeekDaysUpToToday,
   isCurrentWeek,
 } from '@/lib/diary-utils';
+
+// 解析 API 错误响应
+async function parseErrorResponse(res: Response): Promise<string> {
+  try {
+    const data: ErrorResponse = await res.json();
+    return data.error || '请求失败';
+  } catch {
+    return '请求失败';
+  }
+}
 
 export interface DiaryWeekGroup {
   weekNumber: number;
@@ -25,6 +36,7 @@ interface DiaryState {
   expandedWeeks: number[];
   loading: boolean;
   initialized: boolean;
+  error: string | null;
 
   setSelectedYear: (year: number) => void;
   prevYear: () => void;
@@ -35,6 +47,7 @@ interface DiaryState {
   toggleWeek: (weekNumber: number) => void;
   initDiary: () => Promise<void>;
   getWeekGroups: () => DiaryWeekGroup[];
+  clearError: () => void;
 }
 
 export const useDiaryStore = create<DiaryState>((set, get) => ({
@@ -44,6 +57,7 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
   expandedWeeks: [getCurrentISOWeek()],
   loading: false,
   initialized: false,
+  error: null,
 
   setSelectedYear: (year) => {
     set({ selectedYear: year });
@@ -66,16 +80,22 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
     get().fetchDiaries(newYear);
   },
 
+  clearError: () => set({ error: null }),
+
   fetchDiaries: async (year) => {
     set({ loading: true });
     try {
       const res = await fetch(`/api/diaries?year=${year}`);
-      if (res.ok) {
-        const data = await res.json();
-        set({ diaryEntries: data.diaries });
+      if (!res.ok) {
+        const errorMsg = await parseErrorResponse(res);
+        throw new Error(errorMsg);
       }
+      const data: DiariesListResponse = await res.json();
+      set({ diaryEntries: data.diaries, error: null });
     } catch (e) {
-      console.error('Failed to fetch diaries:', e);
+      const message = e instanceof Error ? e.message : '获取日记列表失败';
+      console.error('Failed to fetch diaries:', message);
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -89,14 +109,19 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ today }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        return data as { daily: DiaryMeta; weekly: DiaryMeta };
+      if (!res.ok) {
+        const errorMsg = await parseErrorResponse(res);
+        throw new Error(errorMsg);
       }
+      const data = await res.json();
+      set({ error: null });
+      return data as { daily: DiaryMeta; weekly: DiaryMeta };
     } catch (e) {
-      console.error('Failed to ensure today diary:', e);
+      const message = e instanceof Error ? e.message : '创建今日日记失败';
+      console.error('Failed to ensure today diary:', message);
+      set({ error: message });
+      return null;
     }
-    return null;
   },
 
   openDiary: async (type, date) => {
@@ -106,7 +131,10 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type, date }),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        const errorMsg = await parseErrorResponse(res);
+        throw new Error(errorMsg);
+      }
 
       const diary = await res.json();
       const editorStore = useEditorStore.getState();
@@ -132,12 +160,14 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
         });
       }
 
-      set({ selectedDiaryId: diary.id });
+      set({ selectedDiaryId: diary.id, error: null });
       editorStore.setEditingType('diary');
       await editorStore.loadDiary(diary.id);
       editorStore.switchToNote(diary.id);
     } catch (e) {
-      console.error('Failed to open diary:', e);
+      const message = e instanceof Error ? e.message : '打开日记失败';
+      console.error('Failed to open diary:', message);
+      set({ error: message });
     }
   },
 
@@ -167,7 +197,7 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
 
       // 3. Expand current week
       const currentWeek = getCurrentISOWeek();
-      set({ expandedWeeks: [currentWeek], initialized: true });
+      set({ expandedWeeks: [currentWeek], initialized: true, error: null });
 
       // 4. Auto-open today's daily diary
       if (result?.daily) {
@@ -178,7 +208,9 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
         editorStore.switchToNote(result.daily.id);
       }
     } catch (e) {
-      console.error('Failed to init diary:', e);
+      const message = e instanceof Error ? e.message : '初始化日记失败';
+      console.error('Failed to init diary:', message);
+      set({ error: message });
     } finally {
       set({ loading: false });
     }

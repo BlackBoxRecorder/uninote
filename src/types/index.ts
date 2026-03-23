@@ -19,11 +19,6 @@ export interface NoteMeta {
   updatedAt: number;
 }
 
-export interface NoteDetail extends NoteMeta {
-  content: string | null;
-  markdown: string | null;
-}
-
 export interface Heading {
   id: string;
   level: number;

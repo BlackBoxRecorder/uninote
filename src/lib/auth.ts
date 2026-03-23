@@ -1,6 +1,8 @@
 import { SignJWT, jwtVerify } from "jose";
 
-const JWT_SECRET_KEY = process.env.JWT_SECRET || "default-jwt-secret-change-me-now";
+const JWT_SECRET_KEY = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' 
+  ? (() => { throw new Error('JWT_SECRET environment variable is required in production'); })()
+  : 'dev-jwt-secret-do-not-use-in-production');
 const JWT_EXPIRY = process.env.JWT_EXPIRY || "7d";
 
 function getSecretKey() {
