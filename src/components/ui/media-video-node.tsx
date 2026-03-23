@@ -99,8 +99,10 @@ export const VideoElement = withHOC(
               {!isUpload && isBilibili && (
                 <div ref={handleRef} className="aspect-video w-full rounded-sm overflow-hidden">
                   <iframe
+                    allow="fullscreen"
                     allowFullScreen
                     className="size-full border-0"
+                    sandbox="allow-scripts allow-same-origin allow-presentation"
                     src={embed!.url}
                     title="bilibili"
                   />

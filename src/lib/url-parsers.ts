@@ -55,9 +55,10 @@ export function parseBilibiliUrl(url: string): EmbedUrlData | undefined {
   const page = searchParams.get('p') || '1';
   embedUrl.searchParams.set('page', page);
 
-  // Enable high quality and danmaku
+  // Enable high quality and danmaku, disable autoplay
   embedUrl.searchParams.set('high_quality', '1');
   embedUrl.searchParams.set('danmaku', '0');
+  embedUrl.searchParams.set('autoplay', '0');
 
   const id = bvid || `av${aid}`;
 
