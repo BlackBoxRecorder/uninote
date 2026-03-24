@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import type { Value } from 'platejs';
-import type { SaveStatus } from '@/types';
+import type { QuillDeltaData } from '@/lib/content-utils';
 import { calculateWordCount } from '@/lib/content-utils';
+import type { SaveStatus } from '@/types';
 import {
   getCachedContent,
   setCachedContent,
@@ -13,8 +13,11 @@ type EditingType = 'note' | 'diary';
 
 const MAX_CACHE_SIZE = 20;
 
+/** Empty Quill document */
+const EMPTY_DELTA: QuillDeltaData = { ops: [{ insert: '\n' }] };
+
 interface CachedContent {
-  content: Value;
+  content: QuillDeltaData;
   wordCount: number;
   timestamp: number;
 }
@@ -29,16 +32,20 @@ interface EditorState {
   setEditingType: (type: EditingType) => void;
 
   // Editor content
-  initialContent: Value | null;
-  setInitialContent: (content: Value | null) => void;
+  initialContent: QuillDeltaData | null;
+  setInitialContent: (content: QuillDeltaData | null) => void;
 
   // Current editing content (for manual save)
-  currentContent: Value | null;
-  setCurrentContent: (content: Value | null) => void;
+  currentContent: QuillDeltaData | null;
+  setCurrentContent: (content: QuillDeltaData | null) => void;
 
-  // Markdown serializer callback (set by PlateEditor)
-  markdownSerializer: ((value: Value) => string) | null;
-  setMarkdownSerializer: (serializer: ((value: Value) => string) | null) => void;
+  // Markdown serializer callback (set by QuillEditor)
+  markdownSerializer: (() => string) | null;
+  setMarkdownSerializer: (serializer: (() => string) | null) => void;
+
+  // HTML getter callback (set by QuillEditor)
+  getEditorHTML: (() => string) | null;
+  setGetEditorHTML: (getter: (() => string) | null) => void;
 
   // Save status
   saveStatus: SaveStatus;
@@ -83,20 +90,20 @@ function evictCache(cache: Map<string, CachedContent>) {
   if (oldestKey) cache.delete(oldestKey);
 }
 
-function parseContent(raw: string | null | undefined): Value {
-  const fallback: Value = [{ type: 'p', children: [{ text: '' }] }];
-  if (!raw) return fallback;
+function parseContent(raw: string | null | undefined): QuillDeltaData {
+  if (!raw) return EMPTY_DELTA;
   try {
     const parsed = JSON.parse(raw);
-    // Validate that parsed value is a valid Plate Value (array of nodes)
-    if (!Array.isArray(parsed)) {
-      console.warn('parseContent: JSON is not an array, falling back to text node');
-      return [{ type: 'p', children: [{ text: raw }] }];
+    // Validate Quill Delta format: must have ops array
+    if (parsed && Array.isArray(parsed.ops)) {
+      return parsed as QuillDeltaData;
     }
-    return parsed;
+    // Not a valid Delta format, return empty
+    console.warn('parseContent: JSON is not a valid Quill Delta, falling back to empty');
+    return EMPTY_DELTA;
   } catch (e) {
-    console.warn('parseContent: JSON.parse failed, falling back to text node', e);
-    return [{ type: 'p', children: [{ text: raw }] }];
+    console.warn('parseContent: JSON.parse failed, falling back to empty', e);
+    return EMPTY_DELTA;
   }
 }
 
@@ -115,6 +122,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   markdownSerializer: null,
   setMarkdownSerializer: (serializer) => set({ markdownSerializer: serializer }),
+
+  getEditorHTML: null,
+  setGetEditorHTML: (getter) => set({ getEditorHTML: getter }),
 
   saveStatus: 'saved',
   setSaveStatus: (status) => set({ saveStatus: status }),
@@ -296,7 +306,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         body.markdown = markdown;
       } else if (markdownSerializer) {
         try {
-          body.markdown = markdownSerializer(currentContent);
+          body.markdown = markdownSerializer();
         } catch (e) {
           console.error('Failed to serialize markdown:', e);
         }

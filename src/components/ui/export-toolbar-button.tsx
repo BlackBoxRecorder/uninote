@@ -7,7 +7,6 @@ import {
   FileTextIcon,
   FileTypeIcon,
 } from 'lucide-react';
-import { useEditorRef } from 'platejs/react';
 import * as React from 'react';
 import { toast } from 'sonner';
 
@@ -18,9 +17,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
 import { useEditorStore } from '@/stores/editor-store';
-
-import { ToolbarButton } from './toolbar';
 
 // Dynamic imports to avoid SSR issues
 const loadDocxLibs = async () => {
@@ -34,9 +32,8 @@ const loadDocxLibs = async () => {
 };
 
 export function ExportToolbarButton(props: DropdownMenuProps) {
-  const editor = useEditorRef();
   const [open, setOpen] = React.useState(false);
-  const { currentNoteId } = useEditorStore();
+  const { currentNoteId, markdownSerializer, getEditorHTML } = useEditorStore();
 
   const handleExportMarkdown = React.useCallback(async () => {
     if (!currentNoteId) {
@@ -45,18 +42,17 @@ export function ExportToolbarButton(props: DropdownMenuProps) {
     }
 
     try {
-      // Get the current editor content
-      const value = editor.children;
+      if (!markdownSerializer) {
+        toast.error('编辑器未就绪');
+        return;
+      }
 
-      // Serialize to markdown using the editor's markdown API
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const markdown = (editor.api as any).markdown.serialize({ value });
+      const markdown = markdownSerializer();
 
       // Create a blob and download
       const blob = new Blob([markdown], { type: 'text/markdown' });
       const url = URL.createObjectURL(blob);
 
-      // Use note ID as filename base (title may contain special chars)
       const filename = `note-${currentNoteId.slice(0, 8)}.md`;
 
       const a = document.createElement('a');
@@ -74,7 +70,7 @@ export function ExportToolbarButton(props: DropdownMenuProps) {
     }
 
     setOpen(false);
-  }, [editor, currentNoteId]);
+  }, [markdownSerializer, currentNoteId]);
 
   const handleExportHTML = React.useCallback(async () => {
     if (!currentNoteId) {
@@ -90,26 +86,12 @@ export function ExportToolbarButton(props: DropdownMenuProps) {
       }
       const note = await response.json();
 
-      // Get the current editor content
-      const value = editor.children;
+      if (!getEditorHTML) {
+        toast.error('编辑器未就绪');
+        return;
+      }
 
-      // Serialize to markdown first
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const markdown = (editor.api as any).markdown.serialize({ value });
-
-      // Convert markdown to HTML (simple conversion)
-      const htmlContent = markdown
-        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-        .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
-        .replace(/\*(.*)\*/gim, '<em>$1</em>')
-        .replace(/`(.*?)`/gim, '<code>$1</code>')
-        .replace(/```[\s\S]*?```/gim, (match: string) => {
-          const code = match.replace(/```/g, '').trim();
-          return `<pre><code>${code}</code></pre>`;
-        })
-        .replace(/\n/gim, '<br />');
+      const htmlContent = getEditorHTML();
 
       // Create a complete HTML document
       const fullHtml = `<!DOCTYPE html>
@@ -189,7 +171,7 @@ ${htmlContent}
     }
 
     setOpen(false);
-  }, [editor, currentNoteId]);
+  }, [getEditorHTML, currentNoteId]);
 
   const handleExportDocx = React.useCallback(async () => {
     if (!currentNoteId) {
@@ -205,12 +187,12 @@ ${htmlContent}
       }
       const note = await response.json();
 
-      // Get the current editor content
-      const value = editor.children;
+      if (!markdownSerializer) {
+        toast.error('编辑器未就绪');
+        return;
+      }
 
-      // Serialize to markdown first
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const markdown = (editor.api as any).markdown.serialize({ value });
+      const markdown = markdownSerializer();
 
       // Load libraries dynamically
       const { remark, remarkGfm, remarkDocx } = await loadDocxLibs();
@@ -250,19 +232,19 @@ ${htmlContent}
     }
 
     setOpen(false);
-  }, [editor, currentNoteId]);
+  }, [markdownSerializer, currentNoteId]);
 
   return (
     <DropdownMenu modal={false} onOpenChange={setOpen} open={open} {...props}>
       <DropdownMenuTrigger asChild>
-        <ToolbarButton pressed={open} tooltip="导出">
-          <DownloadIcon />
-        </ToolbarButton>
+        <Button variant="ghost" size="icon" className="h-8 w-8" title="导出">
+          <DownloadIcon className="h-4 w-4" />
+        </Button>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
         align="start"
-        className="ignore-click-outside/toolbar flex max-h-125 min-w-45 flex-col overflow-y-auto"
+        className="flex max-h-125 min-w-45 flex-col overflow-y-auto"
       >
         <DropdownMenuGroup>
           <DropdownMenuItem onSelect={handleExportMarkdown}>

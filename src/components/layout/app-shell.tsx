@@ -1,7 +1,7 @@
 "use client";
 
 import { FileTree } from "@/components/file-tree/file-tree";
-import { PlateEditor } from "@/components/editor/plate-editor";
+import { QuillEditor } from "@/components/editor/quill-editor";
 import { Header } from "@/components/layout/header";
 import { IdeasPage } from "@/components/ideas/ideas-page";
 import { DiaryPage } from "@/components/diary/diary-page";
@@ -30,7 +30,7 @@ export function AppShell() {
           </aside>
 
           <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background">
-            <PlateEditor />
+            <QuillEditor />
           </main>
         </div>
       </div>

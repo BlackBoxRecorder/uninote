@@ -1,106 +1,67 @@
 /**
- * Server-side markdown serialization using Plate.js
- * This module creates a server-side editor to convert Plate JSON content to Markdown
+ * Server-side markdown serialization
+ * Converts Quill Delta JSON to Markdown using quill-delta-to-html + Turndown
  */
 
-import { createSlateEditor } from 'platejs';
-import { MarkdownPlugin, remarkMdx, remarkMention } from '@platejs/markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
+import { QuillDeltaToHtmlConverter } from 'quill-delta-to-html';
+import TurndownService from 'turndown';
 
-// Base plugins for markdown serialization (no React components needed)
-import {
-  BaseBoldPlugin,
-  BaseCodePlugin,
-  BaseItalicPlugin,
-  BaseStrikethroughPlugin,
-  BaseSubscriptPlugin,
-  BaseSuperscriptPlugin,
-  BaseUnderlinePlugin,
-  BaseHighlightPlugin,
-  BaseH1Plugin,
-  BaseH2Plugin,
-  BaseH3Plugin,
-  BaseH4Plugin,
-  BaseH5Plugin,
-  BaseH6Plugin,
-  BaseBlockquotePlugin,
-  BaseHorizontalRulePlugin,
-} from '@platejs/basic-nodes';
-import { BaseCodeBlockPlugin } from '@platejs/code-block';
-import { BaseLinkPlugin } from '@platejs/link';
-import { BaseListPlugin } from '@platejs/list';
-import { BaseImagePlugin } from '@platejs/media';
+let turndownInstance: TurndownService | null = null;
 
-/**
- * Server-side plugins for markdown serialization
- * These are the base plugins without React components
- */
-const serverPlugins = [
-  // Marks
-  BaseBoldPlugin,
-  BaseItalicPlugin,
-  BaseUnderlinePlugin,
-  BaseCodePlugin,
-  BaseStrikethroughPlugin,
-  BaseSubscriptPlugin,
-  BaseSuperscriptPlugin,
-  BaseHighlightPlugin,
+function getTurndown(): TurndownService {
+  if (turndownInstance) return turndownInstance;
 
-  // Blocks
-  BaseH1Plugin,
-  BaseH2Plugin,
-  BaseH3Plugin,
-  BaseH4Plugin,
-  BaseH5Plugin,
-  BaseH6Plugin,
-  BaseBlockquotePlugin,
-  BaseHorizontalRulePlugin,
+  turndownInstance = new TurndownService({
+    headingStyle: 'atx',
+    codeBlockStyle: 'fenced',
+    emDelimiter: '*',
+    bulletListMarker: '-',
+    hr: '---',
+  });
 
-  // Code block
-  BaseCodeBlockPlugin,
-
-  // Link
-  BaseLinkPlugin,
-
-  // List
-  BaseListPlugin,
-
-  // Image
-  BaseImagePlugin,
-
-  // Markdown plugin with remark plugins
-  MarkdownPlugin.configure({
-    options: {
-      remarkPlugins: [remarkMath, remarkGfm, remarkMdx, remarkMention],
+  // Strikethrough support
+  turndownInstance.addRule('strikethrough', {
+    filter: ['del', 's'],
+    replacement(content) {
+      return `~~${content}~~`;
     },
-  }),
-];
+  });
+
+  // Underline - just output the text (markdown doesn't have underline)
+  turndownInstance.addRule('underline', {
+    filter: ['u'],
+    replacement(content) {
+      return content;
+    },
+  });
+
+  return turndownInstance;
+}
 
 /**
- * Convert Plate JSON content to Markdown string
- * @param content - JSON string or parsed array of Plate nodes
+ * Convert Quill Delta JSON content to Markdown string
+ * @param content - JSON string of Quill Delta
  * @returns Markdown string
  */
 export function serializeToMarkdown(content: string): string {
   try {
-    // Parse content if it's a string
-    const nodes = typeof content === 'string' ? JSON.parse(content) : content;
+    const parsed = typeof content === 'string' ? JSON.parse(content) : content;
 
-    if (!Array.isArray(nodes) || nodes.length === 0) {
+    if (!parsed || !Array.isArray(parsed.ops) || parsed.ops.length === 0) {
       return '';
     }
 
-    // Create a server-side editor
-    const editor = createSlateEditor({
-      plugins: serverPlugins,
-      value: nodes,
+    // Convert Delta to HTML
+    const converter = new QuillDeltaToHtmlConverter(parsed.ops, {
+      multiLineParagraph: false,
     });
+    const html = converter.convert();
 
-    // Serialize to markdown
-    const markdown = editor.api.markdown.serialize({ value: nodes });
+    if (!html || !html.trim()) return '';
 
-    return markdown;
+    // Convert HTML to Markdown
+    const td = getTurndown();
+    return td.turndown(html);
   } catch (error) {
     console.error('[server-markdown] Failed to serialize content:', error);
     return '';
@@ -108,8 +69,8 @@ export function serializeToMarkdown(content: string): string {
 }
 
 /**
- * Convert Plate JSON content to Markdown with title prefix
- * @param content - JSON string or parsed array of Plate nodes
+ * Convert Quill Delta JSON content to Markdown with title prefix
+ * @param content - JSON string of Quill Delta
  * @param title - Note title to add as H1 heading
  * @returns Markdown string with title
  */

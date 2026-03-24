@@ -1,25 +1,29 @@
 /**
  * 内容管理公共工具函数
  * 用于 notes 和 diaries 共享的逻辑
+ * 基于 Quill Delta 格式
  */
+
+export interface DeltaOp {
+  insert?: string | Record<string, unknown>;
+  attributes?: Record<string, unknown>;
+}
+
+export interface QuillDeltaData {
+  ops: DeltaOp[];
+}
 
 /**
- * 递归提取所有文本内容
- * @param nodes Plate/Slate 节点数组
+ * 从 Quill Delta ops 中提取所有文本内容
+ * @param delta Quill Delta 数据
  * @returns 纯文本内容
  */
-export function extractText(nodes: unknown[]): string {
-  return nodes
-    .map((node) => {
-      if (!node || typeof node !== 'object') return '';
-      const n = node as Record<string, unknown>;
+export function extractText(delta: QuillDeltaData): string {
+  if (!delta || !Array.isArray(delta.ops)) return '';
 
-      if (typeof n.text === 'string') return n.text;
-
-      if (Array.isArray(n.children)) {
-        return extractText(n.children);
-      }
-
+  return delta.ops
+    .map((op) => {
+      if (typeof op.insert === 'string') return op.insert;
       return '';
     })
     .join('');
@@ -27,10 +31,10 @@ export function extractText(nodes: unknown[]): string {
 
 /**
  * 计算字数（不包含空白字符）
- * @param content Plate/Slate 内容节点数组
+ * @param delta Quill Delta 数据
  * @returns 字数
  */
-export function calculateWordCount(content: unknown[]): number {
-  const text = extractText(content);
+export function calculateWordCount(delta: QuillDeltaData): number {
+  const text = extractText(delta);
   return text.replace(/\s/g, '').length;
 }

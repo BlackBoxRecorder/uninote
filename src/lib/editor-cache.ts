@@ -1,4 +1,4 @@
-import type { Value } from 'platejs';
+import type { QuillDeltaData } from '@/lib/content-utils';
 
 const DB_NAME = 'ynote-editor-cache';
 const DB_VERSION = 1;
@@ -7,7 +7,7 @@ const DEFAULT_MAX_SIZE = 50;
 
 export interface CachedContent {
   noteId: string;
-  content: Value;
+  content: QuillDeltaData;
   wordCount: number;
   timestamp: number;
 }
@@ -109,7 +109,7 @@ export async function getCachedContent(noteId: string): Promise<CachedContent | 
  */
 export async function setCachedContent(
   noteId: string,
-  content: Value,
+  content: QuillDeltaData,
   wordCount: number
 ): Promise<void> {
   if (!isIndexedDBAvailable()) {

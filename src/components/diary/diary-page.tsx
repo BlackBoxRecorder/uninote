@@ -1,7 +1,7 @@
 "use client";
 
 import { DiarySidebar } from "@/components/diary/diary-sidebar";
-import { PlateEditor } from "@/components/editor/plate-editor";
+import { QuillEditor } from "@/components/editor/quill-editor";
 import { useDiaryStore } from "@/stores/diary-store";
 import { useEffect } from "react";
 
@@ -20,7 +20,7 @@ export function DiaryPage() {
         </aside>
 
         <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background">
-          <PlateEditor />
+          <QuillEditor />
         </main>
       </div>
     </div>
